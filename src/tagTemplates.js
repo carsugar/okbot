@@ -907,7 +907,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         opt2Footer;
 
       const switchContent =
-        (switchTime ? `*It will take approximately **${switchTime}** to reach the other side of the detour.*\n\n` : "") +
+        (switchTime ? `*You will travel **${switchTime}** to the other side of the detour.*\n\n` : "") +
         `You've decided to switch! Use \`!${cmd1Display}\` for **${name1}** or \`!${cmd2Display}\` for **${name2}**. `;
 
       const msgs = [
