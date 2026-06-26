@@ -871,7 +871,9 @@ export function handleModalSubmit(interaction, env, ctx) {
       const cmd2Display = cmd2.charAt(0).toUpperCase() + cmd2.slice(1);
       const cmdSwitch = `switch-l${leg}-detour`;
       const cmdSwitchDisplay = `Switch-L${leg}-Detour`;
-      const tagArrived = `${slugify(locationName).toLowerCase()}-arrived`;
+      const locInitials = getInitials(locationName);
+      const tagArrived = `${locInitials.toLowerCase()}-arrived`;
+      const tagArrivedDisplay = `${locInitials}-Arrived`;
 
       const detourTitle = `${name1.toUpperCase()} OR ${name2.toUpperCase()}?`;
       const overviewHeader = `# ⬥ ─── [DETOUR: ${detourTitle}](${DETOUR_HEADER_IMAGE}) ───⬥`;
@@ -906,7 +908,7 @@ export function handleModalSubmit(interaction, env, ctx) {
       const switchContent = `You've decided to switch! Use \`!${cmd1Display}\` for **__${name1}__** or \`!${cmd2Display}\` for **__${name2}__**.`;
 
       const msgs = [
-        `**TAG 1 of 4 — Detour arrival (\`!${tagArrived}\`)**\n\`\`\`\n!tag add ${tagArrived} ${overviewContent}\n\`\`\``,
+        `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n!tag add ${tagArrived} ${overviewContent}\n\`\`\``,
         `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1Display}\`)**\n\`\`\`\n!tag add ${cmd1} ${opt1Content}\n\`\`\``,
         `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2Display}\`)**\n\`\`\`\n!tag add ${cmd2} ${opt2Content}\n\`\`\``,
         `**TAG 4 of 4 — Switch (\`!${cmdSwitchDisplay}\`)**\n\`\`\`\n!tag add ${cmdSwitch} ${switchContent}\n\`\`\``,
