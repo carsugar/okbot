@@ -574,7 +574,7 @@ export function handleModalSubmit(interaction, env, ctx) {
       const footer = "# ⬥ " + "─".repeat(title.length + 19) + "⬥";
       const arrivalContent =
         `# ⬥ ─── [ROADBLOCK: ${title}](${ROADBLOCK_HEADER_IMAGE}) ───⬥\n\n` +
-        `*Welcome to [${location}](${imageUrl}).*\n\n` +
+        `*Welcome to [${location}](${imageUrl})!*\n\n` +
         `*If you are competing in this roadblock, use the command \`${clueCmd}\` for further details!*\n\n` +
         `*Remember the limit for each partner with the amount of roadblocks each can do!*\n` +
         footer;
