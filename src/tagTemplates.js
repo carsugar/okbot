@@ -871,11 +871,14 @@ export function handleModalSubmit(interaction, env, ctx) {
       const tagArrived = `${slugify(locationName).toLowerCase()}-arrived`;
 
       const detourTitle = `${name1.toUpperCase()} OR ${name2.toUpperCase()}?`;
+      const overviewHeader = `# ⬥ ─── [DETOUR: ${detourTitle}](${DETOUR_HEADER_IMAGE}) ───⬥`;
+      const overviewFooter = "# ⬥ " + "─".repeat(`DETOUR: ${detourTitle}`.length + 8) + "⬥";
       const overviewContent =
-        `# __[DETOUR: ${detourTitle}](${DETOUR_HEADER_IMAGE})__` +
-        `*Use the commands \`!${cmd1}\` and \`!${cmd2}\` to view the details of both sides of the detour, and exit [this location](${locationImage}) when you are ready.` +
+        overviewHeader + "\n\n" +
+        `*Use the commands \`!${cmd1}\` and \`!${cmd2}\` to view the details of both sides of the detour, and exit [this location](${locationImage}) when you are ready. ` +
         `If your team chooses to switch sides of the detour at any point, use the command \`!${cmdSwitch}\` to travel and begin the other side. ` +
-        `Please note that switching will erase all progress, and returning later will require you to start from the beginning.*`;
+        `Please note that switching will erase all progress, and returning later will require you to start from the beginning.*\n` +
+        overviewFooter;
 
       const opt1Header = `# ⬥ ─── DETOUR: ${name1.toUpperCase()} ───⬥`;
       const opt1Footer =
