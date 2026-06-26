@@ -906,9 +906,9 @@ export function handleModalSubmit(interaction, env, ctx) {
         `*If you would like to switch, use the command \`!${cmdSwitchDisplay}\`.*\n` +
         opt2Footer;
 
-      const switchContent =
-        (switchTime ? `*You will travel **${switchTime}** to the other side of the detour.*\n\n` : "") +
-        `You've decided to switch! Use \`!${cmd1Display}\` for **${name1}** or \`!${cmd2Display}\` for **${name2}**. `;
+      const switchContent = switchTime
+        ? `*You will travel **${switchTime}** to the other detour. If you would like to switch, use the arrival command of the other detour.*`
+        : `*If you would like to switch, use the arrival command of the other detour.*`;
 
       const msgs = [
         `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n!tag add ${tagArrived} ${overviewContent}\n\`\`\``,
