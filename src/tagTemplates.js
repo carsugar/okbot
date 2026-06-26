@@ -867,7 +867,10 @@ export function handleModalSubmit(interaction, env, ctx) {
 
       const cmd1 = name1.toLowerCase().replace(/[^a-z0-9]/g, "");
       const cmd2 = name2.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const cmdSwitch = `switch-${leg}detour`;
+      const cmd1Display = cmd1.charAt(0).toUpperCase() + cmd1.slice(1);
+      const cmd2Display = cmd2.charAt(0).toUpperCase() + cmd2.slice(1);
+      const cmdSwitch = `switch-l${leg}-detour`;
+      const cmdSwitchDisplay = `Switch-L${leg}-Detour`;
       const tagArrived = `${slugify(locationName).toLowerCase()}-arrived`;
 
       const detourTitle = `${name1.toUpperCase()} OR ${name2.toUpperCase()}?`;
@@ -875,8 +878,8 @@ export function handleModalSubmit(interaction, env, ctx) {
       const overviewFooter = "# ⬥ " + "─".repeat(`DETOUR: ${detourTitle}`.length + 8) + "⬥";
       const overviewContent =
         overviewHeader + "\n\n" +
-        `*Use the commands \`!${cmd1}\` and \`!${cmd2}\` to view the details of both sides of the detour, and exit ${locationImage ? `[${locationName}](${locationImage})` : locationName} when you are ready. ` +
-        `If your team chooses to switch sides of the detour at any point, use the command \`!${cmdSwitch}\` to travel and begin the other side. ` +
+        `*Use the commands \`!${cmd1Display}\` and \`!${cmd2Display}\` to view the details of both sides of the detour, and exit ${locationImage ? `[${locationName}](${locationImage})` : locationName} when you are ready. ` +
+        `If your team chooses to switch sides of the detour at any point, use the command \`!${cmdSwitchDisplay}\` to travel and begin the other side. ` +
         `Please note that switching will erase all progress, and returning later will require you to start from the beginning.*\n` +
         overviewFooter;
 
@@ -887,7 +890,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         opt1Header +
         "\n\n" +
         `*${desc1}*\n\n` +
-        `*If you would like to switch, use the command \`!${cmdSwitch}\`.*\n` +
+        `*If you would like to switch, use the command \`!${cmdSwitchDisplay}\`.*\n` +
         opt1Footer;
 
       const opt2Header = `# ⬥ ─── DETOUR: ${name2.toUpperCase()} ───⬥`;
@@ -897,16 +900,16 @@ export function handleModalSubmit(interaction, env, ctx) {
         opt2Header +
         "\n\n" +
         `*${desc2}*\n\n` +
-        `*If you would like to switch, use the command \`!${cmdSwitch}\`.*\n` +
+        `*If you would like to switch, use the command \`!${cmdSwitchDisplay}\`.*\n` +
         opt2Footer;
 
-      const switchContent = `You've decided to switch! Use \`!${cmd1}\` for **__${name1}__** or \`!${cmd2}\` for **__${name2}__**.`;
+      const switchContent = `You've decided to switch! Use \`!${cmd1Display}\` for **__${name1}__** or \`!${cmd2Display}\` for **__${name2}__**.`;
 
       const msgs = [
         `**TAG 1 of 4 — Detour arrival (\`!${tagArrived}\`)**\n\`\`\`\n!tag add ${tagArrived} ${overviewContent}\n\`\`\``,
-        `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1}\`)**\n\`\`\`\n!tag add ${cmd1} ${opt1Content}\n\`\`\``,
-        `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2}\`)**\n\`\`\`\n!tag add ${cmd2} ${opt2Content}\n\`\`\``,
-        `**TAG 4 of 4 — Switch (\`!${cmdSwitch}\`)**\n\`\`\`\n!tag add ${cmdSwitch} ${switchContent}\n\`\`\``,
+        `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1Display}\`)**\n\`\`\`\n!tag add ${cmd1} ${opt1Content}\n\`\`\``,
+        `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2Display}\`)**\n\`\`\`\n!tag add ${cmd2} ${opt2Content}\n\`\`\``,
+        `**TAG 4 of 4 — Switch (\`!${cmdSwitchDisplay}\`)**\n\`\`\`\n!tag add ${cmdSwitch} ${switchContent}\n\`\`\``,
       ];
 
       ctx.waitUntil(
