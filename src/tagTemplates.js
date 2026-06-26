@@ -875,7 +875,7 @@ export function handleModalSubmit(interaction, env, ctx) {
       const overviewFooter = "# ⬥ " + "─".repeat(`DETOUR: ${detourTitle}`.length + 8) + "⬥";
       const overviewContent =
         overviewHeader + "\n\n" +
-        `*Use the commands \`!${cmd1}\` and \`!${cmd2}\` to view the details of both sides of the detour, and exit [this location](${locationImage}) when you are ready. ` +
+        `*Use the commands \`!${cmd1}\` and \`!${cmd2}\` to view the details of both sides of the detour, and exit ${locationImage ? `[${locationName}](${locationImage})` : locationName} when you are ready. ` +
         `If your team chooses to switch sides of the detour at any point, use the command \`!${cmdSwitch}\` to travel and begin the other side. ` +
         `Please note that switching will erase all progress, and returning later will require you to start from the beginning.*\n` +
         overviewFooter;
