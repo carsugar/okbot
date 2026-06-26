@@ -25,7 +25,10 @@ export const TAG_TEMPLATE_COMMAND = {
       type: 1,
       name: 'detour',
       description: 'Generate Detour tags (overview, both options, switch).',
-      options: [{ type: 4, name: 'leg', description: 'Leg number', required: true }],
+      options: [
+        { type: 4, name: 'leg', description: 'Leg number', required: true },
+        { type: 3, name: 'switch_time', description: 'Travel time to switch sides (e.g. 10 minutes)', required: false },
+      ],
     },
     {
       type: 1,

@@ -330,11 +330,11 @@ function travelModal(transportCsv, hasCustom) {
   };
 }
 
-function detourModal(leg) {
+function detourModal(leg, switchTime) {
   return {
     type: 9,
     data: {
-      custom_id: `modal_detour:${leg}`,
+      custom_id: `modal_detour:${leg}:${switchTime}`,
       title: `Detour: Leg ${leg}`,
       components: [
         row({
@@ -501,7 +501,7 @@ export function handleCommand(interaction) {
     case "routeinfo_travel":
       return new JsonResponse({ type: 4, data: transportButtonMessage() });
     case "detour":
-      return new JsonResponse(detourModal(getOpt("leg")));
+      return new JsonResponse(detourModal(getOpt("leg"), getOpt("switch_time") || ""));
     case "roadblock":
       return new JsonResponse(roadblockModal());
     default:
@@ -855,6 +855,7 @@ export function handleModalSubmit(interaction, env, ctx) {
 
     case "modal_detour": {
       const leg = parseInt(parts[0]);
+      const switchTime = parts.slice(1).join(":") || "";
       const locRaw = getField(interaction, "location");
       const name1 = getField(interaction, "option1_name");
       const desc1 = getField(interaction, "option1_desc");
@@ -905,7 +906,9 @@ export function handleModalSubmit(interaction, env, ctx) {
         `*If you would like to switch, use the command \`!${cmdSwitchDisplay}\`.*\n` +
         opt2Footer;
 
-      const switchContent = `You've decided to switch! Use \`!${cmd1Display}\` for **__${name1}__** or \`!${cmd2Display}\` for **__${name2}__**.`;
+      const switchContent =
+        (switchTime ? `*It will take approximately **${switchTime}** to reach the other side of the detour.*\n\n` : "") +
+        `You've decided to switch! Use \`!${cmd1Display}\` for **${name1}** or \`!${cmd2Display}\` for **${name2}**. `;
 
       const msgs = [
         `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n!tag add ${tagArrived} ${overviewContent}\n\`\`\``,
