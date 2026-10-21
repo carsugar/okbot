@@ -13,6 +13,9 @@ const DETOUR_HEADER_IMAGE =
 const PITSTOP_HEADER_IMAGE =
   "https://media.discordapp.net/attachments/1259308675282239599/1270130341654429717/1_kokM4GUm9rQLD9XYMSCr_w.png?ex=69af3a8f&is=69ade90f&hm=b81b474edb59ecf31575463674ef429cd8cf11b3018af2c25b27ca25b2c9026f&=&format=webp&quality=lossless&width=1364&height=786";
 
+// Raw mention: pasted into a message, Discord turns it into a real @Carl-bot ping.
+const CARLBOT_MENTION = "<@235148962103951360>";
+
 const ROUTE_INFO_HEADER = `# ⬥ ─── [ROUTE INFO](${ROUTE_INFO_HEADER_IMAGE}) ─── ⬥`;
 const ROUTE_INFO_FOOTER = "# ⬥ ───────────────── ⬥";
 const TRAVEL_INFO_HEADER = "# ⬥ ─── TRAVEL INFO ─── ⬥";
@@ -99,7 +102,7 @@ function buildIndividualCommand(option, duration, cost, inits) {
     const body = `You have ${past} **${fixed} ${unit}**, and spent $0. Please use the command \`!${inits}-Arrived\`.`;
     return [
       `Carlbot tag — \`${trigger}\``,
-      `/tag create ${trigger.replace("!", "").toLowerCase()} ${body}`,
+      `${CARLBOT_MENTION} tag + ${trigger.replace("!", "").toLowerCase()} ${body}`,
     ];
   }
 
@@ -643,8 +646,8 @@ export function handleModalSubmit(interaction, env, ctx) {
         `*Remember the limit for each partner with the amount of roadblocks each can do!*\n` +
         footer;
 
-      const msg1 = `**TAG 1 of 2 — Arrival announcement (\`!${arrivedTag}\`)**\n\`\`\`\n/tag create ${arrivedTag} ${arrivalContent}\n\`\`\``;
-      const msg2 = `**TAG 2 of 2 — Roadblock clue (\`${clueCmd}\`)**\n\`\`\`\n/tag create ${clueTag} ${clue}\n\`\`\``;
+      const msg1 = `**TAG 1 of 2 — Arrival announcement (\`!${arrivedTag}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${arrivedTag} ${arrivalContent}\n\`\`\``;
+      const msg2 = `**TAG 2 of 2 — Roadblock clue (\`${clueCmd}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${clueTag} ${clue}\n\`\`\``;
 
       ctx.waitUntil(sendFollowup(env, interaction.token, msg2));
       return new JsonResponse({ type: 4, data: { content: msg1, flags: 64 } });
@@ -667,7 +670,7 @@ export function handleModalSubmit(interaction, env, ctx) {
       return new JsonResponse({
         type: 4,
         data: {
-          content: `**Pit Stop tag (\`${cmd}\`)**\n\`\`\`\n/tag create ${tag} ${content}\n\`\`\``,
+          content: `**Pit Stop tag (\`${cmd}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${tag} ${content}\n\`\`\``,
           flags: 64,
         },
       });
@@ -681,7 +684,7 @@ export function handleModalSubmit(interaction, env, ctx) {
       return new JsonResponse({
         type: 4,
         data: {
-          content: `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n/tag create ${tag} ${content}\n\`\`\``,
+          content: `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${tag} ${content}\n\`\`\``,
           flags: 64,
         },
       });
@@ -745,7 +748,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         paragraphs.join("\n\n") +
         "\n" +
         ROUTE_INFO_FOOTER;
-      const msg1 = `**Leg Start tag (\`!${tagName}\`)**\n\`\`\`\n/tag create ${tagName} ${content}\n\`\`\``;
+      const msg1 = `**Leg Start tag (\`!${tagName}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${tagName} ${content}\n\`\`\``;
 
       if (moneyDisplay) {
         const mimuReply = `${moneyDisplay} has been added to your account! {modifybal: ${money}}`;
@@ -802,7 +805,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         paragraphs.join("\n\n") +
         "\n" +
         ROUTE_INFO_FOOTER;
-      const msg1 = `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n/tag create ${tag} ${content}\n\`\`\``;
+      const msg1 = `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${tag} ${content}\n\`\`\``;
 
       if (dest && transportParts.length) {
         const inits = getInitials(dest);
@@ -912,7 +915,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         "\n\n" +
         `*${cmdSentences.join(" ")}*`;
 
-      const tagMsg = `**Travel tag (\`!${tagName}\`)**\n\`\`\`\n/tag create ${tagName} ${travelContent}\n\`\`\``;
+      const tagMsg = `**Travel tag (\`!${tagName}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${tagName} ${travelContent}\n\`\`\``;
 
       if (entries.length > 0) {
         ctx.waitUntil(
@@ -998,10 +1001,10 @@ export function handleModalSubmit(interaction, env, ctx) {
         : `*If you would like to switch, use the arrival command of the other detour.*`;
 
       const msgs = [
-        `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n/tag create ${tagArrived} ${overviewContent}\n\`\`\``,
-        `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1Display}\`)**\n\`\`\`\n/tag create ${cmd1} ${opt1Content}\n\`\`\``,
-        `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2Display}\`)**\n\`\`\`\n/tag create ${cmd2} ${opt2Content}\n\`\`\``,
-        `**TAG 4 of 4 — Switch (\`!${cmdSwitchDisplay}\`)**\n\`\`\`\n/tag create ${cmdSwitch} ${switchContent}\n\`\`\``,
+        `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${tagArrived} ${overviewContent}\n\`\`\``,
+        `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1Display}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${cmd1} ${opt1Content}\n\`\`\``,
+        `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2Display}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${cmd2} ${opt2Content}\n\`\`\``,
+        `**TAG 4 of 4 — Switch (\`!${cmdSwitchDisplay}\`)**\n\`\`\`\n${CARLBOT_MENTION} tag + ${cmdSwitch} ${switchContent}\n\`\`\``,
       ];
 
       ctx.waitUntil(
