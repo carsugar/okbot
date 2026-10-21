@@ -1,10 +1,10 @@
 import { TAG_TEMPLATE_COMMAND, HELP_COMMAND } from './commands.js';
 
-const token = process.env.DISCORD_TOKEN;
-const applicationId = process.env.DISCORD_APPLICATION_ID;
+const token = process.env.OKBOT_TOKEN ?? process.env.DISCORD_TOKEN;
+const applicationId = process.env.OKBOT_APPLICATION_ID ?? process.env.DISCORD_APPLICATION_ID;
 
 if (!token || !applicationId) {
-  throw new Error('Set DISCORD_TOKEN and DISCORD_APPLICATION_ID env vars before running.');
+  throw new Error('Set OKBOT_TOKEN and OKBOT_APPLICATION_ID env vars before running.');
 }
 
 const response = await fetch(`https://discord.com/api/v10/applications/${applicationId}/commands`, {
