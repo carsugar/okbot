@@ -10,6 +10,9 @@ const ROUTE_INFO_HEADER_IMAGE =
 const DETOUR_HEADER_IMAGE =
   "https://media.discordapp.net/attachments/1259308675282239599/1266871293823684619/Clue-Detour.webp?ex=69af3cd5&is=69adeb55&hm=e0ef2c484e52f704e5ba22685deea297fe930f9b8561fe60dc57c99964056879&=&format=webp&width=468&height=992";
 
+const PITSTOP_HEADER_IMAGE =
+  "https://media.discordapp.net/attachments/1259308675282239599/1270130341654429717/1_kokM4GUm9rQLD9XYMSCr_w.png?ex=69af3a8f&is=69ade90f&hm=b81b474edb59ecf31575463674ef429cd8cf11b3018af2c25b27ca25b2c9026f&=&format=webp&quality=lossless&width=1364&height=786";
+
 const ROUTE_INFO_HEADER = `# ⬥ ─── [ROUTE INFO](${ROUTE_INFO_HEADER_IMAGE}) ───⬥`;
 const ROUTE_INFO_FOOTER = "# ⬥ ─────────────────⬥";
 const TRAVEL_INFO_HEADER = "# ⬥ ─── TRAVEL INFO ───⬥";
@@ -96,7 +99,7 @@ function buildIndividualCommand(option, duration, cost, inits) {
     const body = `You have ${past} **${fixed} ${unit}**, and spent $0. Please use the command \`!${inits}-Arrived\`.`;
     return [
       `Carlbot tag — \`${trigger}\``,
-      `!tag add ${trigger.replace("!", "").toLowerCase()} ${body}`,
+      `/tag create ${trigger.replace("!", "").toLowerCase()} ${body}`,
     ];
   }
 
@@ -149,6 +152,19 @@ function slugify(str) {
 
 function row(component) {
   return { type: 1, components: [component] };
+}
+
+const ORDINAL_ONES = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
+const ORDINAL_TEENS = ["tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth"];
+const CARDINAL_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+const ORDINAL_TENS = ["", "", "twentieth", "thirtieth", "fortieth", "fiftieth", "sixtieth", "seventieth", "eightieth", "ninetieth"];
+
+function numberToOrdinalWord(n) {
+  if (n < 10) return ORDINAL_ONES[n];
+  if (n < 20) return ORDINAL_TEENS[n - 10];
+  const tens = Math.floor(n / 10);
+  const ones = n % 10;
+  return ones === 0 ? ORDINAL_TENS[tens] : `${CARDINAL_TENS[tens]}-${ORDINAL_ONES[ones]}`;
 }
 
 // ── Modal builders ────────────────────────────────────────────────────────────
@@ -382,6 +398,34 @@ function detourModal(leg, switchTime) {
   };
 }
 
+function pitstopModal(leg, season) {
+  return {
+    type: 9,
+    data: {
+      custom_id: `modal_pitstop:${leg}:${season}`,
+      title: `Pit Stop: Leg ${leg}`,
+      components: [
+        row({
+          type: 4,
+          custom_id: "location_name",
+          label: "Location Name",
+          placeholder: "e.g. Embalse Yeso",
+          style: 1,
+          max_length: 100,
+        }),
+        row({
+          type: 4,
+          custom_id: "location_image_url",
+          label: "Location Image URL",
+          placeholder: "https://www.imageURL.com",
+          style: 1,
+          max_length: 500,
+        }),
+      ],
+    },
+  };
+}
+
 function singleTravelModal(transport, inits) {
   const cap = transport.charAt(0).toUpperCase() + transport.slice(1);
   return {
@@ -484,7 +528,27 @@ function getField(interaction, id) {
 
 // ── Command handler ───────────────────────────────────────────────────────────
 
+const HELP_TEXT = [
+  "**How to use**",
+  "1. Run a `/tag_template` command. I reply privately with code blocks.",
+  "2. Copy each code block and paste it into a channel (each starts with `/tag create <name> <content>`).",
+  "3. Players run a tag with the Carlbot prefix, e.g. `!SJ-Arrived`.",
+  "",
+  "**Commands**",
+  "`/tag_template routeinfo_legstart leg` — Route Info: Leg Start",
+  "`/tag_template routeinfo_task` — Route Info: Task",
+  "`/tag_template routeinfo_travel` — Route Info: Travel",
+  "`/tag_template detour leg [switch_time]` — Detour (4 tags)",
+  "`/tag_template roadblock` — Roadblock (2 tags)",
+  "`/tag_template pitstop leg season` — Pit Stop",
+  "",
+  "Edit a tag later with `/tag edit <name> <content>`. For tags over 2000 characters use `/tag procreate <name> <pastebin link>`.",
+].join("\n");
+
 export function handleCommand(interaction) {
+  if (interaction.data.name === "help") {
+    return new JsonResponse({ type: 4, data: { content: HELP_TEXT, flags: 64 } });
+  }
   if (interaction.data.name !== "tag_template") {
     return new JsonResponse({ error: "Unknown command" }, { status: 400 });
   }
@@ -504,6 +568,8 @@ export function handleCommand(interaction) {
       return new JsonResponse(detourModal(getOpt("leg"), getOpt("switch_time") || ""));
     case "roadblock":
       return new JsonResponse(roadblockModal());
+    case "pitstop":
+      return new JsonResponse(pitstopModal(getOpt("leg"), getOpt("season")));
     default:
       return new JsonResponse({ error: "Unknown subcommand" }, { status: 400 });
   }
@@ -579,11 +645,34 @@ export function handleModalSubmit(interaction, env, ctx) {
         `*Remember the limit for each partner with the amount of roadblocks each can do!*\n` +
         footer;
 
-      const msg1 = `**TAG 1 of 2 — Arrival announcement (\`!${arrivedTag}\`)**\n\`\`\`\n!tag add ${arrivedTag} ${arrivalContent}\n\`\`\``;
-      const msg2 = `**TAG 2 of 2 — Roadblock clue (\`${clueCmd}\`)**\n\`\`\`\n!tag add ${clueTag} ${clue}\n\`\`\``;
+      const msg1 = `**TAG 1 of 2 — Arrival announcement (\`!${arrivedTag}\`)**\n\`\`\`\n/tag create ${arrivedTag} ${arrivalContent}\n\`\`\``;
+      const msg2 = `**TAG 2 of 2 — Roadblock clue (\`${clueCmd}\`)**\n\`\`\`\n/tag create ${clueTag} ${clue}\n\`\`\``;
 
       ctx.waitUntil(sendFollowup(env, interaction.token, msg2));
       return new JsonResponse({ type: 4, data: { content: msg1, flags: 64 } });
+    }
+
+    case "modal_pitstop": {
+      const leg = parseInt(parts[0]);
+      const season = parts[1];
+      const location = getField(interaction, "location_name");
+      const imageUrl = getField(interaction, "location_image_url");
+
+      const legOrdinal = numberToOrdinalWord(leg).toUpperCase();
+      const tag = `pitstop-l${leg}`;
+      const cmd = `!Pitstop-L${leg}`;
+
+      const content =
+        `# __[YOU ARE DONE WITH THE ${legOrdinal} LEG OF THE AMAZING JRACE: SEASON ${season}!](${PITSTOP_HEADER_IMAGE})__\n\n` +
+        `***Jroe stands beside you at [${location}](${imageUrl}). You are team number...***`;
+
+      return new JsonResponse({
+        type: 4,
+        data: {
+          content: `**Pit Stop tag (\`${cmd}\`)**\n\`\`\`\n/tag create ${tag} ${content}\n\`\`\``,
+          flags: 64,
+        },
+      });
     }
 
     case "modal_task": {
@@ -594,7 +683,7 @@ export function handleModalSubmit(interaction, env, ctx) {
       return new JsonResponse({
         type: 4,
         data: {
-          content: `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n!tag add ${tag} ${content}\n\`\`\``,
+          content: `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n/tag create ${tag} ${content}\n\`\`\``,
           flags: 64,
         },
       });
@@ -658,7 +747,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         paragraphs.join("\n\n") +
         "\n" +
         ROUTE_INFO_FOOTER;
-      const msg1 = `**Leg Start tag (\`!${tagName}\`)**\n\`\`\`\n!tag add ${tagName} ${content}\n\`\`\``;
+      const msg1 = `**Leg Start tag (\`!${tagName}\`)**\n\`\`\`\n/tag create ${tagName} ${content}\n\`\`\``;
 
       if (moneyDisplay) {
         const mimuReply = `${moneyDisplay} has been added to your account! {modifybal: ${money}}`;
@@ -715,7 +804,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         paragraphs.join("\n\n") +
         "\n" +
         ROUTE_INFO_FOOTER;
-      const msg1 = `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n!tag add ${tag} ${content}\n\`\`\``;
+      const msg1 = `**Route Info tag (\`!${tag}\`)**\n\`\`\`\n/tag create ${tag} ${content}\n\`\`\``;
 
       if (dest && transportParts.length) {
         const inits = getInitials(dest);
@@ -825,7 +914,7 @@ export function handleModalSubmit(interaction, env, ctx) {
         "\n\n" +
         `*${cmdSentences.join(" ")}*`;
 
-      const tagMsg = `**Travel tag (\`!${tagName}\`)**\n\`\`\`\n!tag add ${tagName} ${travelContent}\n\`\`\``;
+      const tagMsg = `**Travel tag (\`!${tagName}\`)**\n\`\`\`\n/tag create ${tagName} ${travelContent}\n\`\`\``;
 
       if (entries.length > 0) {
         ctx.waitUntil(
@@ -911,10 +1000,10 @@ export function handleModalSubmit(interaction, env, ctx) {
         : `*If you would like to switch, use the arrival command of the other detour.*`;
 
       const msgs = [
-        `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n!tag add ${tagArrived} ${overviewContent}\n\`\`\``,
-        `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1Display}\`)**\n\`\`\`\n!tag add ${cmd1} ${opt1Content}\n\`\`\``,
-        `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2Display}\`)**\n\`\`\`\n!tag add ${cmd2} ${opt2Content}\n\`\`\``,
-        `**TAG 4 of 4 — Switch (\`!${cmdSwitchDisplay}\`)**\n\`\`\`\n!tag add ${cmdSwitch} ${switchContent}\n\`\`\``,
+        `**TAG 1 of 4 — Detour arrival (\`!${tagArrivedDisplay}\`)**\n\`\`\`\n/tag create ${tagArrived} ${overviewContent}\n\`\`\``,
+        `**TAG 2 of 4 — Option 1: ${name1} (\`!${cmd1Display}\`)**\n\`\`\`\n/tag create ${cmd1} ${opt1Content}\n\`\`\``,
+        `**TAG 3 of 4 — Option 2: ${name2} (\`!${cmd2Display}\`)**\n\`\`\`\n/tag create ${cmd2} ${opt2Content}\n\`\`\``,
+        `**TAG 4 of 4 — Switch (\`!${cmdSwitchDisplay}\`)**\n\`\`\`\n/tag create ${cmdSwitch} ${switchContent}\n\`\`\``,
       ];
 
       ctx.waitUntil(

@@ -36,5 +36,19 @@ export const TAG_TEMPLATE_COMMAND = {
       description: 'Generate a Roadblock tag.',
       options: [],
     },
+    {
+      type: 1,
+      name: 'pitstop',
+      description: 'Generate a Pit Stop tag.',
+      options: [
+        { type: 4, name: 'leg', description: 'Leg number', required: true },
+        { type: 4, name: 'season', description: 'Season number', required: true },
+      ],
+    },
   ],
+};
+
+export const HELP_COMMAND = {
+  name: 'help',
+  description: 'How to use the tag template commands.',
 };
