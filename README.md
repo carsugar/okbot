@@ -5,10 +5,10 @@ Discord bot that generates [Carl-bot](https://docs.carl.gg/#/tagstriggers?id=tag
 ## How to use
 
 1. Run a `/tag_template` command (needs Manage Server). The bot replies privately with one or more code blocks.
-2. Copy each code block and paste it into any channel. Each starts with `/tag create <name> <content>`.
+2. Copy each code block and paste it into any channel. Each starts with an `@Carl-bot tag + <name> <content>` mention command, so pasting it creates the tag.
 3. Players run the tag by typing its name after the Carl-bot prefix, e.g. `!SJ-Arrived`.
 
-To change a tag later, use `/tag edit <name> <content>`.
+To change a tag later, use `/tag edit <name> <content>` or the Carl-bot dashboard.
 
 ## Commands
 
@@ -23,5 +23,6 @@ To change a tag later, use `/tag edit <name> <content>`.
 
 ## Notes
 
-- Carl-bot deprecated `!tag add`. Tags are created with `/tag create`; they are still invoked with the `!` prefix.
+- Carl-bot deprecated `!tag add`, and slash commands can't be pasted. Output uses the pasteable mention form (`<@235148962103951360> tag + ...`). Tags are still invoked with the `!` prefix.
 - Discord caps messages at 2000 characters. For a longer tag, use `/tag procreate <name> <pastebin link>`.
+- The Leg Start template also outputs a Mimu `/autoresponder add ...` line. That is a slash command, so fill it in by hand from the slash menu.
