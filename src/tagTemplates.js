@@ -529,20 +529,18 @@ function getField(interaction, id) {
 // ── Command handler ───────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
-  "**How to use**",
-  "1. Run a `/tag_template` command. I reply privately with code blocks.",
-  "2. Copy each code block and paste it into a channel (each starts with `/tag create <name> <content>`).",
-  "3. Players run a tag with the Carlbot prefix, e.g. `!SJ-Arrived`.",
+  "**Steps**",
+  "1. Type `/tag_template` and pick a template (below).",
+  "2. Fill out the form (and click the buttons, if any) that pops up.",
+  "3. Copy each code block I send back and paste it into a channel to create the tag.",
   "",
-  "**Commands**",
-  "`/tag_template routeinfo_legstart leg` — Route Info: Leg Start",
-  "`/tag_template routeinfo_task` — Route Info: Task",
-  "`/tag_template routeinfo_travel` — Route Info: Travel",
-  "`/tag_template detour leg [switch_time]` — Detour (4 tags)",
-  "`/tag_template roadblock` — Roadblock (2 tags)",
-  "`/tag_template pitstop leg season` — Pit Stop",
-  "",
-  "Edit a tag later with `/tag edit <name> <content>`. For tags over 2000 characters use `/tag procreate <name> <pastebin link>`.",
+  "**Templates**",
+  "`routeinfo_legstart leg` — Leg start: tells teams where they're headed, the flight, and the leg money. Also gives the Mimu autoresponder for claiming the money.",
+  "`routeinfo_task` — A Route Info task. Wraps your task text in the Route Info header.",
+  "`routeinfo_travel` — Travel tag for a destination: taxi, bus, walking or custom options, each with time and cost.",
+  "`detour leg` — Detour: the arrival message, one tag per option, and the switch tag (4 tags).",
+  "`roadblock` — Roadblock: the arrival message and the clue tag (2 tags).",
+  "`pitstop leg season` — Pit Stop: the \"you are done with the Nth leg\" message.",
 ].join("\n");
 
 export function handleCommand(interaction) {
