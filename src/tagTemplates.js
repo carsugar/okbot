@@ -13,10 +13,10 @@ const DETOUR_HEADER_IMAGE =
 const PITSTOP_HEADER_IMAGE =
   "https://media.discordapp.net/attachments/1259308675282239599/1270130341654429717/1_kokM4GUm9rQLD9XYMSCr_w.png?ex=69af3a8f&is=69ade90f&hm=b81b474edb59ecf31575463674ef429cd8cf11b3018af2c25b27ca25b2c9026f&=&format=webp&quality=lossless&width=1364&height=786";
 
-const ROUTE_INFO_HEADER = `# ⬥ ─── [ROUTE INFO](${ROUTE_INFO_HEADER_IMAGE}) ───⬥`;
-const ROUTE_INFO_FOOTER = "# ⬥ ─────────────────⬥";
-const TRAVEL_INFO_HEADER = "# ⬥ ─── TRAVEL INFO ───⬥";
-const TRAVEL_INFO_FOOTER = "# ⬥ ───────────────────⬥";
+const ROUTE_INFO_HEADER = `# ⬥ ─── [ROUTE INFO](${ROUTE_INFO_HEADER_IMAGE}) ─── ⬥`;
+const ROUTE_INFO_FOOTER = "# ⬥ ───────────────── ⬥";
+const TRAVEL_INFO_HEADER = "# ⬥ ─── TRAVEL INFO ─── ⬥";
+const TRAVEL_INFO_FOOTER = "# ⬥ ─────────────────── ⬥";
 
 const TRAVEL_EMOJIS = { taxi: "🚕", bus: "🚌", walking: "🚶" };
 const TRAVEL_DURATION_LABELS = {
@@ -635,9 +635,9 @@ export function handleModalSubmit(interaction, env, ctx) {
       const clueTag = `rb-l${leg}`;
       const clueCmd = `!RB-L${leg}`;
 
-      const footer = "# ⬥ " + "─".repeat(title.length + 19) + "⬥";
+      const footer = "# ⬥ " + "─".repeat(title.length + 19) + " ⬥";
       const arrivalContent =
-        `# ⬥ ─── [ROADBLOCK: ${title}](${ROADBLOCK_HEADER_IMAGE}) ───⬥\n\n` +
+        `# ⬥ ─── [ROADBLOCK: ${title}](${ROADBLOCK_HEADER_IMAGE}) ─── ⬥\n\n` +
         `*Welcome to [${location}](${imageUrl})!*\n\n` +
         `*If you are competing in this roadblock, use the command \`${clueCmd}\` for further details!*\n\n` +
         `*Remember the limit for each partner with the amount of roadblocks each can do!*\n` +
@@ -964,8 +964,8 @@ export function handleModalSubmit(interaction, env, ctx) {
       const tagArrivedDisplay = `${locInitials}-Arrived`;
 
       const detourTitle = `${name1.toUpperCase()} OR ${name2.toUpperCase()}?`;
-      const overviewHeader = `# ⬥ ─── [DETOUR: ${detourTitle}](${DETOUR_HEADER_IMAGE}) ───⬥`;
-      const overviewFooter = "# ⬥ " + "─".repeat(`DETOUR: ${detourTitle}`.length + 8) + "⬥";
+      const overviewHeader = `# ⬥ ─── [DETOUR: ${detourTitle}](${DETOUR_HEADER_IMAGE}) ─── ⬥`;
+      const overviewFooter = "# ⬥ " + "─".repeat(`DETOUR: ${detourTitle}`.length + 8) + " ⬥";
       const overviewContent =
         overviewHeader + "\n\n" +
         `*Use the commands \`!${cmd1Display}\` and \`!${cmd2Display}\` to view the details of both sides of the detour, and exit ${locationImage ? `[${locationName}](${locationImage})` : locationName} when you are ready. ` +
@@ -973,9 +973,9 @@ export function handleModalSubmit(interaction, env, ctx) {
         `Please note that switching will erase all progress, and returning later will require you to start from the beginning.*\n` +
         overviewFooter;
 
-      const opt1Header = `# ⬥ ─── DETOUR: ${name1.toUpperCase()} ───⬥`;
+      const opt1Header = `# ⬥ ─── DETOUR: ${name1.toUpperCase()} ─── ⬥`;
       const opt1Footer =
-        "# ⬥ " + "─".repeat(`DETOUR: ${name1}`.length + 8) + "⬥";
+        "# ⬥ " + "─".repeat(`DETOUR: ${name1}`.length + 8) + " ⬥";
       const opt1Content =
         opt1Header +
         "\n\n" +
@@ -983,9 +983,9 @@ export function handleModalSubmit(interaction, env, ctx) {
         `*If you would like to switch, use the command \`!${cmdSwitchDisplay}\`.*\n` +
         opt1Footer;
 
-      const opt2Header = `# ⬥ ─── DETOUR: ${name2.toUpperCase()} ───⬥`;
+      const opt2Header = `# ⬥ ─── DETOUR: ${name2.toUpperCase()} ─── ⬥`;
       const opt2Footer =
-        "# ⬥ " + "─".repeat(`DETOUR: ${name2}`.length + 8) + "⬥";
+        "# ⬥ " + "─".repeat(`DETOUR: ${name2}`.length + 8) + " ⬥";
       const opt2Content =
         opt2Header +
         "\n\n" +
