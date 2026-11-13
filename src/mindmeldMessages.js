@@ -25,7 +25,8 @@ export function lobbyText(players) {
     `### ${mention(players[0])} ⚔️ ${mention(players[1])}`,
     '',
     '## 🎯 The goal',
-    '> Say the **same word** at the same time. Fewer rounds is a better score.',
+    '> Mind Meld is a **collaborative word association game**. You are not competing, you are trying to get on the same wavelength.',
+    '> Say the **same word** at the same time. The fewer rounds it takes, the better your score.',
     '',
     '## 🕹️ How to play',
     '> **1.** Press **Submit word** and privately enter any starting word. Nobody sees it yet.',
@@ -36,8 +37,7 @@ export function lobbyText(players) {
     '## 💡 Example',
     '> 🌧️ **rain** + 🏜️ **desert** → one of you says **oasis**, the other says **cactus**',
     '> Those two are revealed, so now find a word that connects *oasis* and *cactus*...',
-    '',
-    '-# Tips: don\'t overthink it. Go with the first connection that comes to mind, and trust that your partner is thinking along the same lines. Plurals and tenses count as the same word, and you can\'t reuse a word already said.',
+    '> Each round, you are both aiming for the middle ground between the last two words, so think about what your partner is likely to say.',
   ].join('\n');
 }
 
