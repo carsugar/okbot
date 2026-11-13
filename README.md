@@ -23,7 +23,7 @@ To change a tag later, use `/tag edit <name> <content>` or the Carl-bot dashboar
 
 ## Mind Meld
 
-A two-player word game. Run `/mindmeld partner:@someone` in a server channel (anyone can) to post a lobby card with **Submit word** and **End game** buttons.
+A two-player word game. Run `/mindmeld partner:@someone` in a server channel (anyone can) to post a lobby message with **Submit word** and **End game** buttons.
 
 1. Each player clicks **Submit word** and privately enters a starting word. The first to submit sees "Locked in"; when the second submits, the bot posts both words together.
 2. Each round, both players privately enter a word that connects the last two revealed words, and the bot reveals them together.

@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
 import { newGame, submitWord, preflight, endGame, isStale, normalizeWord } from './mindmeldRules.js';
-import { lobbyEmbed, revealEmbed, endedEmbed, useButtonId, parseUseId } from './mindmeldMessages.js';
+import { lobbyText, revealText, endedText, useButtonId, parseUseId } from './mindmeldMessages.js';
 import { lookupWord } from './dictionary.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -78,14 +78,14 @@ const row = (...components) => ({ type: 1, components });
 const playButtons = (gameId) =>
   row(button(1, 'Submit word', `mm:submit:${gameId}`), button(4, 'End game', `mm:end:${gameId}`));
 
-const publicEmbed = (embed, components = []) =>
-  new JsonResponse({ type: 4, data: { embeds: [embed], components, allowed_mentions: { parse: [] } } });
+const publicMessage = (content, components = []) =>
+  new JsonResponse({ type: 4, data: { content, components, allowed_mentions: { parse: [] } } });
 
 // The reveal is the response of whoever submitted last; a match ends the buttons.
 function outcome(gameId, result, word, onWaiting) {
   if (result.type === 'waiting') return onWaiting();
   if (result.type !== 'revealed') return refusal(result.type, word);
-  return publicEmbed(revealEmbed(result), result.matched ? [] : [playButtons(gameId)]);
+  return publicMessage(revealText(result), result.matched ? [] : [playButtons(gameId)]);
 }
 
 const lockedIn = () => ephemeral('Locked in. Waiting for your partner.');
@@ -118,8 +118,7 @@ export async function handleMindMeldCommand(interaction, env) {
   return new JsonResponse({
     type: 4,
     data: {
-      content: `<@${invokerId}> <@${partnerId}>`,
-      embeds: [lobbyEmbed([invokerId, partnerId])],
+      content: lobbyText([invokerId, partnerId]),
       components: [playButtons(interaction.id)],
       allowed_mentions: { users: [invokerId, partnerId] },
     },
@@ -153,7 +152,7 @@ export async function handleMindMeldComponent(interaction, env) {
   if (action === 'endyes') {
     const result = await gameStub(env, gameId).end(userId);
     if (result.type !== 'ended_now') return refusal(result.type);
-    return publicEmbed(endedEmbed({ ...result, endedBy: userId }));
+    return publicMessage(endedText({ ...result, endedBy: userId }));
   }
 
   // submit and end both need a live game that this user is playing.
