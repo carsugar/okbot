@@ -24,9 +24,20 @@ export function lobbyText(players) {
     '',
     `### ${mention(players[0])} ⚔️ ${mention(players[1])}`,
     '',
-    '> Each of you privately enters a word.',
-    '> When both are in, they are revealed together.',
-    '> Then keep entering a word that connects the last two, until you land on the same one.',
+    '## 🎯 The goal',
+    '> Say the **same word** at the same time. Fewer rounds is a better score.',
+    '',
+    '## 🕹️ How to play',
+    '> **1.** Press **Submit word** and privately enter any starting word. Nobody sees it yet.',
+    '> **2.** When you have both entered one, the two words are revealed together.',
+    '> **3.** Now each of you enters a **new word that connects the two revealed words**.',
+    '> **4.** Repeat until you both enter the same word. 🎉',
+    '',
+    '## 💡 Example',
+    '> 🌧️ **rain** + 🏜️ **desert** → one of you says **oasis**, the other says **cactus**',
+    '> Those two are revealed, so now find a word that connects *oasis* and *cactus*...',
+    '',
+    '-# Tips: don\'t overthink it. Go with the first connection that comes to mind, and trust that your partner is thinking along the same lines. Plurals and tenses count as the same word, and you can\'t reuse a word already said.',
   ].join('\n');
 }
 
