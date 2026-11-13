@@ -107,6 +107,12 @@ test('lobby is a title, both players, and the numbered how-to', () => {
   assert.match(t, /\n1\. Press \*\*Submit word\*\*/);
 });
 
+test('lobby keeps a visible gap after the title and before the buttons', () => {
+  const lines = lobbyText(PLAYERS).split('\n');
+  assert.equal(lines[1], '\u200b');
+  assert.equal(lines.at(-1), '\u200b');
+});
+
 test('use-button id round-trips the round and a word containing colons, under 100 chars', () => {
   assert.deepEqual(parseUseId(useButtonId('123', 4, 'a:b:c')), { gameId: '123', round: 4, word: 'a:b:c' });
   assert.ok(useButtonId('1234567890123456789', 120, 'x'.repeat(32)).length < 100);

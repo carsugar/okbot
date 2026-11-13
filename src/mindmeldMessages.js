@@ -1,5 +1,7 @@
 // Message text for Mind Meld. Plain Discord markdown (big headers, quote bars and
 // small print), kept under the 2000-character message limit.
+// Discord trims plain blank lines after a header and at the end of a message, so those gaps need an invisible character.
+const SPACER = '\u200b';
 const MAX_ROUNDS_SHOWN = 6;
 const DIVIDER = '▰'.repeat(16);
 const OMITTED = '-# …earlier rounds not shown';
@@ -21,7 +23,7 @@ const roundLine = (players, number, round, bold) =>
 export function lobbyText(players) {
   return [
     `# 🧠 Mind Meld: ${mention(players[0])} 🤝 ${mention(players[1])}`,
-    '',
+    SPACER,
     'Mind Meld is a collaborative word association game. You are not competing, you are trying to get on the same wavelength. Say the same word at the same time. The fewer rounds it takes, the better your score.',
     '',
     '',
@@ -45,6 +47,7 @@ export function lobbyText(players) {
     '**Round 3:** wheel and wheel *(a wheel of cheese is round)* 🎉',
     '',
     'That is a mind meld in 3 rounds. Each round, aim for the middle ground between the last two words, and think about what your partner is likely to say.',
+    SPACER,
   ].join('\n');
 }
 
