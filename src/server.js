@@ -1,4 +1,5 @@
 import { AutoRouter } from 'itty-router';
+export { MindMeldGame } from './mindmeld.js';
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
