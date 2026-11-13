@@ -22,7 +22,7 @@ export function lobbyText(players) {
   return [
     '# 🧠 MIND MELD',
     '',
-    `### ${mention(players[0])} ⚔️ ${mention(players[1])}`,
+    `### ${mention(players[0])} 🤝 ${mention(players[1])}`,
     '',
     '## 🎯 The goal',
     '> Mind Meld is a **collaborative word association game**. You are not competing, you are trying to get on the same wavelength.',

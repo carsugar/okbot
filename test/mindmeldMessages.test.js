@@ -103,7 +103,7 @@ test('ended message names who ended it, the rounds played, and says no score', (
 test('lobby is a big title, both players, and the how-to in a quote', () => {
   const t = lobbyText(PLAYERS);
   assert.match(t, /^# 🧠 MIND MELD\n\n/);
-  assert.ok(t.includes(`<@${A}> ⚔️ <@${B}>`));
+  assert.ok(t.includes(`<@${A}> 🤝 <@${B}>`));
   assert.match(t, /\n> /);
 });
 
