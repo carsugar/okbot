@@ -50,3 +50,29 @@ Two people play Mind Meld in a Discord channel as a challenge inside an Amazing 
 - No round cap and no give-up button. The game ends on a match or after 24 hours idle.
 - The partner can't be yourself or a bot.
 - No test framework exists, so verification is a node script exercising `applyWord`, plus a manual run in `wrangler dev`.
+
+## Update: polish round (2026-11-12)
+
+Requested after the first deploy. Supersedes the earlier non-goal "no dictionary or word validation".
+
+**1. Nicer, roomier messages.** Lobby, reveal, win and ended messages become Discord embeds (colored card, title, fields) instead of plain text. Colors: blurple for play, gold for a match, grey for an ended game. Refusals and "locked in" stay short ephemeral text. Embeds also lift the 2000-character limit (description 4096), but the last-8-rounds cap stays.
+
+**2. Score.** A match shows **"Mind meld in N rounds"** where N is the round that matched. The starting words are round 1, so identical starting words score 1 round. (My call.)
+
+**3. Dictionary check with "did you mean".** Uses the Datamuse API (`https://api.datamuse.com/words?sp=<word>&max=4`), free and keyless. A word is recognized when the top result equals it (case-insensitive). Otherwise it is "unrecognized" and the top other results are the suggestions.
+- Only the word is sent, never player or game ids.
+- Fail open: on a timeout (1.5 s), network error or non-200, treat the word as recognized and skip the warning.
+- Unrecognized word: the player gets a private message "`x` isn't in my dictionary", with up to 2 buttons `Use "<suggestion>"`, one `Use "<x>" anyway`, and `Change word` (reopens the modal). The word is carried in the button's custom id (`mm:use:<gameId>:<word>`; limits make it fit), so no extra storage. A `Use` button submits that word without another dictionary check.
+- Known gaps, accepted: some brands (whatsapp) are unrecognized, and some common misspellings (beleive) are in Datamuse's vocabulary and pass.
+- Option rejected: a bundled 275k-word list (~700 KB gzipped, no brands or slang).
+
+**4. End the game.** An **End game** button on the lobby and on every non-final reveal. Either player can press it; it asks privately "End the game?" with `Yes, end it` / `Keep playing`. On yes, the game status becomes `ended`, a grey public message says who ended it and after how many rounds, and further Submit clicks get "This game was ended." No score. (Confirm step is my call, since ending is irreversible.)
+
+**5. Footer wording.** "Think this should've been a match? Ping the hosts!" (done).
+
+**Files:** `src/mindmeldRules.js` (+`endGame`, `ended` status), `src/mindmeldMessages.js` (embeds), new `src/dictionary.js` (`lookupWord(word, fetchFn)`, node-safe, tested with a fake fetch), `src/mindmeld.js` (handlers, DO `end`), tests, README.
+
+**6. No repeated words.** A word already revealed in the game can't be used again, by either player. A repeat is refused privately ("**x** was already said in this game. Pick a different word.") and nothing is locked in, so the player can retry.
+- "Already said" means every word in `history` (all revealed rounds), compared with the same lemma rule as matching, so `rains` after `rain` counts as a repeat. (My call: otherwise players could dodge the rule with a plural.)
+- A partner's still-hidden pending word never counts. Entering the same word as your partner's pending word is a normal match and must not be refused, or the refusal would leak their word.
+- Enforced in `submitWord` (new result `{ type: 'repeat' }`). The handler also asks the Durable Object up front (`preflight(userId, word)`, which also catches already-submitted) so a repeat or double submit is refused before the dictionary warning, not after. Preflight is advisory; `submit` stays the authority.
