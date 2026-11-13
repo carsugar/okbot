@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
 import { newGame, submitWord, preflight, endGame, isStale, normalizeWord } from './mindmeldRules.js';
-import { lobbyText, revealText, endedText, useButtonId, parseUseId } from './mindmeldMessages.js';
+import { lobbyText, revealText, endedText, modalPrompt, useButtonId, parseUseId } from './mindmeldMessages.js';
 import { lookupWord } from './dictionary.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -24,6 +24,11 @@ export class MindMeldGame extends DurableObject {
     if (!state) return 'expired';
     if (!state.players.includes(userId)) return 'not_player';
     return { won: 'finished', ended: 'ended' }[state.status] ?? 'ok';
+  }
+
+  async prompt() {
+    const state = await this.ctx.storage.get('state');
+    return state ? { players: state.players, history: state.history } : { players: [], history: [] };
   }
 
   // Advisory early refusal (repeat, double submit...); `submit` stays the authority.
@@ -125,17 +130,17 @@ export async function handleMindMeldCommand(interaction, env) {
   });
 }
 
-const wordModal = (gameId) =>
-  new JsonResponse({
+const wordModal = (gameId, { players, history }) => {
+  const { title, label, placeholder } = modalPrompt(players, history);
+  return new JsonResponse({
     type: 9,
     data: {
       custom_id: `mm_modal:${gameId}`,
-      title: 'Mind Meld',
-      components: [
-        row({ type: 4, custom_id: 'word', label: 'Your word', style: 1, required: true, max_length: 32 }),
-      ],
+      title,
+      components: [row({ type: 4, custom_id: 'word', label, placeholder, style: 1, required: true, max_length: 32 })],
     },
   });
+};
 
 export async function handleMindMeldComponent(interaction, env) {
   const userId = interaction.member.user.id;
@@ -169,7 +174,7 @@ export async function handleMindMeldComponent(interaction, env) {
       },
     });
   }
-  return wordModal(gameId);
+  return wordModal(gameId, await gameStub(env, gameId).prompt());
 }
 
 export async function handleMindMeldModal(interaction, env) {

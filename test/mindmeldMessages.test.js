@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lobbyText, revealText, endedText, useButtonId, parseUseId } from '../src/mindmeldMessages.js';
+import { lobbyText, revealText, endedText, modalPrompt, useButtonId, parseUseId } from '../src/mindmeldMessages.js';
 import { MINDMELD_COMMAND } from '../src/commands.js';
 
 const [A, B] = ['100000000000000001', '100000000000000002'];
@@ -120,4 +120,24 @@ test('use-button id round-trips the round and a word containing colons, under 10
 
 test('mindmeld command is guild-only so interaction.member always exists', () => {
   assert.deepEqual(MINDMELD_COMMAND.contexts, [0]);
+});
+
+test('first-round modal asks for any starting word', () => {
+  const p = modalPrompt(PLAYERS, []);
+  assert.equal(p.title, 'Mind Meld: Round 1');
+  assert.equal(p.label, 'Choose any word at all to begin');
+});
+
+test('later modals name the two words to connect, in the label when it fits', () => {
+  const p = modalPrompt(PLAYERS, [round('rain', 'desert')]);
+  assert.equal(p.title, 'Mind Meld: Round 2');
+  assert.equal(p.label, 'Connect rain and desert');
+  assert.match(p.placeholder, /rain.*desert/);
+});
+
+test('modal text stays inside Discord limits for the longest words', () => {
+  const w = 'x'.repeat(32);
+  const p = modalPrompt(PLAYERS, Array.from({ length: 120 }, () => round(w, w)));
+  assert.ok(p.title.length <= 45 && p.label.length <= 45 && p.placeholder.length <= 100);
+  assert.ok(p.placeholder.includes(w));
 });
