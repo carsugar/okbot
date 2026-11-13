@@ -100,11 +100,11 @@ test('ended message names who ended it, the rounds played, and says no score', (
   assert.match(t, new RegExp(`<@${B}> called it after \\*\\*1 round\\*\\*. No score.`));
 });
 
-test('lobby is a big title, both players, and the how-to in a quote', () => {
+test('lobby is a title, both players, and the numbered how-to', () => {
   const t = lobbyText(PLAYERS);
-  assert.match(t, /^# 🧠 MIND MELD\n\n/);
-  assert.ok(t.includes(`<@${A}> 🤝 <@${B}>`));
-  assert.match(t, /\n> /);
+  assert.match(t, /^# Mind Meld\n\n/);
+  assert.ok(t.includes(`<@${A}> and <@${B}>`));
+  assert.match(t, /\n1\. Press \*\*Submit word\*\*/);
 });
 
 test('use-button id round-trips the round and a word containing colons, under 100 chars', () => {

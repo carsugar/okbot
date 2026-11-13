@@ -20,24 +20,18 @@ const roundLine = (players, number, round, bold) =>
 
 export function lobbyText(players) {
   return [
-    '# 🧠 MIND MELD',
+    '# Mind Meld',
     '',
-    `### ${mention(players[0])} 🤝 ${mention(players[1])}`,
+    `${mention(players[0])} and ${mention(players[1])}`,
     '',
-    '## 🎯 The goal',
-    '> Mind Meld is a **collaborative word association game**. You are not competing, you are trying to get on the same wavelength.',
-    '> Say the **same word** at the same time. The fewer rounds it takes, the better your score.',
+    'Mind Meld is a collaborative word association game. You are not competing, you are trying to get on the same wavelength. Say the same word at the same time. The fewer rounds it takes, the better your score.',
     '',
-    '## 🕹️ How to play',
-    '> **1.** Press **Submit word** and privately enter any starting word. Nobody sees it yet.',
-    '> **2.** When you have both entered one, the two words are revealed together.',
-    '> **3.** Now each of you enters a **new word that connects the two revealed words**.',
-    '> **4.** Repeat until you both enter the same word. 🎉',
+    '1. Press **Submit word** and privately enter any starting word. Nobody sees it yet.',
+    '2. When you have both entered one, the two words are revealed together.',
+    '3. Now each of you enters a new word that connects the two revealed words.',
+    '4. Repeat until you both enter the same word.',
     '',
-    '## 💡 Example',
-    '> 🌧️ **rain** + 🏜️ **desert** → one of you says **oasis**, the other says **cactus**',
-    '> Those two are revealed, so now find a word that connects *oasis* and *cactus*...',
-    '> Each round, you are both aiming for the middle ground between the last two words, so think about what your partner is likely to say.',
+    'For example, rain and desert might lead one of you to say oasis and the other cactus. Those two are revealed, so now you find a word that connects oasis and cactus. Each round, you are both aiming for the middle ground between the last two words, so think about what your partner is likely to say.',
   ].join('\n');
 }
 
