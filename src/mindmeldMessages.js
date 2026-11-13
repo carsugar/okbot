@@ -20,9 +20,7 @@ const roundLine = (players, number, round, bold) =>
 
 export function lobbyText(players) {
   return [
-    '# 🧠 Mind Meld',
-    '',
-    `${mention(players[0])} 🤝 ${mention(players[1])}`,
+    `# 🧠 Mind Meld: ${mention(players[0])} 🤝 ${mention(players[1])}`,
     '',
     'Mind Meld is a collaborative word association game. You are not competing, you are trying to get on the same wavelength. Say the same word at the same time. The fewer rounds it takes, the better your score.',
     '',
