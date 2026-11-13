@@ -51,15 +51,15 @@ export function revealText({ players, history, words, matched, exact }) {
   const [x, y] = players.map((p) => escapeMarkdown(words[p]));
   const { cut, shown } = lastRounds(history.slice(0, -1));
   const earlier = shown.length
-    ? ['', '-# 📜 Earlier rounds', ...(cut ? [OMITTED] : []), ...shown.map(([n, round]) => `-# ${roundLine(players, n, round, false)}`)]
+    ? ['-# 📜 Earlier rounds', ...(cut ? [OMITTED] : []), ...shown.map(([n, round]) => `-# ${roundLine(players, n, round, false)}`), '']
     : [];
   return [
+    ...earlier,
     `## 🧠 Round ${history.length}`,
     '',
     ...players.map((p) => `> ### ${mention(p)} → **${escapeMarkdown(words[p])}**`),
     '',
     `### 🔗 Connect **${x}** ⟷ **${y}**`,
-    ...earlier,
     '',
     FOOTER,
   ].join('\n');

@@ -13,7 +13,7 @@ const reveal = (history, over = {}) =>
 
 test('non-final reveal has a round header, one big line per player, and the connect prompt', () => {
   const t = reveal([round('rain', 'desert'), round('oasis', 'camel')]);
-  assert.match(t, /^## 🧠 Round 2\n\n/);
+  assert.match(t, /## 🧠 Round 2\n\n/);
   assert.match(t, new RegExp(`> ### <@${A}> → \\*\\*oasis\\*\\*\\n> ### <@${B}> → \\*\\*camel\\*\\*`));
   assert.match(t, /### 🔗 Connect \*\*oasis\*\* ⟷ \*\*camel\*\*/);
 });
@@ -21,13 +21,24 @@ test('non-final reveal has a round header, one big line per player, and the conn
 test('sections are separated by blank lines', () => {
   const t = reveal([round('rain', 'desert'), round('oasis', 'camel')]);
   assert.ok(t.includes('\n\n### 🔗'));
-  assert.ok(t.includes('\n\n-# 📜 Earlier rounds'));
+  assert.ok(t.includes('\n\n## 🧠 Round 2'));
 });
 
 test('earlier rounds are small print and the current round is not repeated there', () => {
   const t = reveal([round('rain', 'desert'), round('oasis', 'camel')]);
   assert.match(t, /-# Round 1 · <@100000000000000001> rain/);
   assert.doesNotMatch(t, /-# Round 2/);
+});
+
+test('history comes first and the current round sits below it', () => {
+  const t = reveal([round('rain', 'desert'), round('oasis', 'camel')]);
+  assert.ok(t.startsWith('-# 📜 Earlier rounds\n'));
+  assert.ok(t.indexOf('Round 1 ·') < t.indexOf('## 🧠 Round 2'));
+  assert.ok(t.indexOf('## 🧠 Round 2') < t.indexOf('Connect'));
+});
+
+test('first round has no earlier-rounds section and starts with its own header', () => {
+  assert.ok(reveal([round('rain', 'desert')]).startsWith('## 🧠 Round 1'));
 });
 
 test('first round has no earlier-rounds section', () => {
@@ -60,7 +71,7 @@ test('counted as a match is noted only when the match was not exact', () => {
 test('long games show the last 6 rounds with real numbering and an omitted note', () => {
   const history = Array.from({ length: 30 }, (_, i) => round(`a${i}`, `b${i}`));
   const t = reveal(history.slice(0, 29));
-  assert.match(t, /^## 🧠 Round 29/);
+  assert.match(t, /## 🧠 Round 29/);
   assert.match(t, /earlier rounds not shown/);
   assert.match(t, /Round 28 · /);
   assert.doesNotMatch(t, /Round 1 · /);
