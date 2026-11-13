@@ -32,9 +32,9 @@ export function lobbyText(players) {
     '4. Repeat until you both enter the same word.',
     '',
     'For example:',
-    'Round 1: water and dirt',
-    'Round 2: mud and clay (both sit between water and dirt)',
-    'Round 3: brick and brick (both connect mud and clay) 🎉',
+    'Round 1: pizza and moon',
+    'Round 2: round and cheese (both link pizza and moon)',
+    'Round 3: wheel and wheel (a wheel of cheese is round) 🎉',
     '',
     'That is a mind meld in 3 rounds. Each round, aim for the middle ground between the last two words, and think about what your partner is likely to say.',
   ].join('\n');
