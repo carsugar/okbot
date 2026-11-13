@@ -91,18 +91,17 @@ export function endedText({ players, history, endedBy }) {
   ].join('\n');
 }
 
-// Text for the word-entry pop-up. Discord caps title and label at 45 characters and placeholder at 100.
+// Text for the word-entry pop-up. Discord caps title and label at 45 characters.
 export function modalPrompt(players, history) {
   const title = `Mind Meld: Round ${history.length + 1}`;
   if (!history.length) {
-    return { title, label: 'Choose any word at all to begin', placeholder: 'Any word works' };
+    return { title, label: 'Choose any word at all to begin' };
   }
   const [a, b] = players.map((p) => history.at(-1)[p]);
   const label = `Connect ${a} and ${b}`;
   return {
     title,
-    label: label.length <= 45 ? label : 'A word that connects the two',
-    placeholder: `Enter a word that connects ${a} and ${b}`,
+    label: label.length <= 45 ? label : 'A word that connects the two words',
   };
 }
 

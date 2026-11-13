@@ -131,13 +131,13 @@ export async function handleMindMeldCommand(interaction, env) {
 }
 
 const wordModal = (gameId, { players, history }) => {
-  const { title, label, placeholder } = modalPrompt(players, history);
+  const { title, label } = modalPrompt(players, history);
   return new JsonResponse({
     type: 9,
     data: {
       custom_id: `mm_modal:${gameId}`,
       title,
-      components: [row({ type: 4, custom_id: 'word', label, placeholder, style: 1, required: true, max_length: 32 })],
+      components: [row({ type: 4, custom_id: 'word', label, style: 1, required: true, max_length: 32 })],
     },
   });
 };
