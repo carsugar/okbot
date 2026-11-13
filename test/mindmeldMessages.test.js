@@ -102,8 +102,8 @@ test('ended message names who ended it, the rounds played, and says no score', (
 
 test('lobby is a title, both players, and the numbered how-to', () => {
   const t = lobbyText(PLAYERS);
-  assert.match(t, /^# Mind Meld\n\n/);
-  assert.ok(t.includes(`<@${A}> and <@${B}>`));
+  assert.match(t, /^# 🧠 Mind Meld\n\n/);
+  assert.ok(t.includes(`<@${A}> 🤝 <@${B}>`));
   assert.match(t, /\n1\. Press \*\*Submit word\*\*/);
 });
 
