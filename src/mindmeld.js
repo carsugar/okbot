@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
 import { newGame, submitWord } from './mindmeldRules.js';
+import { revealText } from './mindmeldMessages.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
@@ -55,25 +56,9 @@ const submitButton = (gameId) => ({
   components: [{ type: 2, style: 1, label: 'Submit word', custom_id: `mm:submit:${gameId}` }],
 });
 
-const roundLine = (players, round, i) =>
-  `Round ${i + 1}: ${players.map((p) => `<@${p}> **${round[p]}**`).join(' · ')}`;
-
 function revealMessage(gameId, r) {
-  const lines = r.history.map((round, i) => roundLine(r.players, round, i));
-  if (r.matched) {
-    const note = r.exact ? '' : ' (counted as a match)';
-    return { content: `🎉 **Mind meld!**${note}\n${lines.join('\n')}`, allowed_mentions: { parse: [] } };
-  }
-  const [x, y] = r.players.map((p) => r.words[p]);
-  return {
-    content: [
-      ...lines,
-      `Next: a word that connects **${x}** and **${y}**.`,
-      '-# Think a pair should have matched? Tell the organizers.',
-    ].join('\n'),
-    components: [submitButton(gameId)],
-    allowed_mentions: { parse: [] },
-  };
+  const data = { content: revealText(r), allowed_mentions: { parse: [] } };
+  return r.matched ? data : { ...data, components: [submitButton(gameId)] };
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
