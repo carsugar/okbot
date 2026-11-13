@@ -17,6 +17,6 @@ export function revealText({ players, history, words, matched, exact }) {
   return [
     ...lines,
     `Next: a word that connects **${x}** and **${y}**.`,
-    '-# Think a pair should have matched? Tell the organizers.',
+    "-# Think this should've been a match? Ping the hosts!",
   ].join('\n');
 }

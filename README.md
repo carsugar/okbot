@@ -27,7 +27,7 @@ A two-player word game. Run `/mindmeld partner:@someone` (anyone can) to post a 
 
 1. Each player clicks the button and privately enters a starting word. The first to submit sees "Locked in"; when the second submits, the bot posts both words publicly.
 2. Each round, both players privately enter a word that connects the last two revealed words, and the bot reveals them together.
-3. The game ends when the two words match. Plurals, tenses and irregular forms count (rain / raining, mouse / mice), but derived forms do not (happy / happiness). If you think the bot missed a valid match, tell the organizers.
+3. The game ends when the two words match. Plurals, tenses and irregular forms count (rain / raining, mouse / mice), but derived forms do not (happy / happiness). If you think the bot missed a valid match, ping the hosts.
 
 A word can't be changed once locked in. Games can be played live or over hours, and expire after 24 hours with no activity. Game state is stored in a Durable Object (`MIND_MELD`), so `npm run deploy` creates it on first deploy.
 

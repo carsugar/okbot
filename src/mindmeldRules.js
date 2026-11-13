@@ -19,13 +19,35 @@ export function newGame(players, now) {
   return { players, pending: {}, history: [], status: 'active', updatedAt: now };
 }
 
-export function submitWord(state, userId, rawWord, now) {
-  const unchanged = (result) => ({ state, result });
+const closedStatus = (state) => (state.status === 'won' ? 'finished' : state.status === 'ended' ? 'ended' : null);
 
-  if (!state.players.includes(userId)) return unchanged({ type: 'not_player' });
-  if (state.status === 'won') return unchanged({ type: 'finished' });
-  if (!normalizeWord(rawWord)) return unchanged({ type: 'invalid' });
-  if (userId in state.pending) return unchanged({ type: 'already_submitted' });
+// Everything that can refuse a word before it is locked in. Only revealed words
+// count as repeats, so a partner's hidden word is never leaked.
+export function preflight(state, userId, rawWord) {
+  if (!state.players.includes(userId)) return { type: 'not_player' };
+  const closed = closedStatus(state);
+  if (closed) return { type: closed };
+  const word = normalizeWord(rawWord);
+  if (!word) return { type: 'invalid' };
+  if (userId in state.pending) return { type: 'already_submitted' };
+  const seen = state.history.flatMap((round) => Object.values(round));
+  if (seen.some((old) => wordsMatch(word, normalizeWord(old)))) return { type: 'repeat' };
+  return { type: 'ok' };
+}
+
+export function endGame(state, userId, now) {
+  if (!state.players.includes(userId)) return { state, result: { type: 'not_player' } };
+  const closed = closedStatus(state);
+  if (closed) return { state, result: { type: closed } };
+  return {
+    state: { ...state, status: 'ended', updatedAt: now },
+    result: { type: 'ended_now', rounds: state.history.length },
+  };
+}
+
+export function submitWord(state, userId, rawWord, now) {
+  const check = preflight(state, userId, rawWord);
+  if (check.type !== 'ok') return { state, result: check };
 
   const pending = { ...state.pending, [userId]: rawWord.trim() };
   const next = { ...state, pending, updatedAt: now };
