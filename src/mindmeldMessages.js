@@ -22,11 +22,22 @@ export function lobbyText(players) {
   return [
     '# 🧠 MIND MELD',
     '',
-    `### ${mention(players[0])} ⚔️ ${mention(players[1])}`,
+    `### ${mention(players[0])} 🤝 ${mention(players[1])}`,
     '',
-    '> Each of you privately enters a word.',
-    '> When both are in, they are revealed together.',
-    '> Then keep entering a word that connects the last two, until you land on the same one.',
+    '## 🎯 The goal',
+    '> Mind Meld is a **collaborative word association game**. You are not competing, you are trying to get on the same wavelength.',
+    '> Say the **same word** at the same time. The fewer rounds it takes, the better your score.',
+    '',
+    '## 🕹️ How to play',
+    '> **1.** Press **Submit word** and privately enter any starting word. Nobody sees it yet.',
+    '> **2.** When you have both entered one, the two words are revealed together.',
+    '> **3.** Now each of you enters a **new word that connects the two revealed words**.',
+    '> **4.** Repeat until you both enter the same word. 🎉',
+    '',
+    '## 💡 Example',
+    '> 🌧️ **rain** + 🏜️ **desert** → one of you says **oasis**, the other says **cactus**',
+    '> Those two are revealed, so now find a word that connects *oasis* and *cactus*...',
+    '> Each round, you are both aiming for the middle ground between the last two words, so think about what your partner is likely to say.',
   ].join('\n');
 }
 
@@ -51,15 +62,15 @@ export function revealText({ players, history, words, matched, exact }) {
   const [x, y] = players.map((p) => escapeMarkdown(words[p]));
   const { cut, shown } = lastRounds(history.slice(0, -1));
   const earlier = shown.length
-    ? ['', '-# 📜 Earlier rounds', ...(cut ? [OMITTED] : []), ...shown.map(([n, round]) => `-# ${roundLine(players, n, round, false)}`)]
+    ? ['-# 📜 Earlier rounds', ...(cut ? [OMITTED] : []), ...shown.map(([n, round]) => `-# ${roundLine(players, n, round, false)}`), '']
     : [];
   return [
+    ...earlier,
     `## 🧠 Round ${history.length}`,
     '',
     ...players.map((p) => `> ### ${mention(p)} → **${escapeMarkdown(words[p])}**`),
     '',
     `### 🔗 Connect **${x}** ⟷ **${y}**`,
-    ...earlier,
     '',
     FOOTER,
   ].join('\n');
