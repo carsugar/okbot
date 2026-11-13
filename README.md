@@ -1,6 +1,6 @@
 # okbot
 
-Discord bot that generates [Carl-bot](https://docs.carl.gg/#/tagstriggers?id=tags) tags from templates.
+Discord bot that generates [Carl-bot](https://docs.carl.gg/#/tagstriggers?id=tags) tags from templates, and hosts a two-player Mind Meld game.
 
 ## How to use
 
@@ -20,6 +20,16 @@ To change a tag later, use `/tag edit <name> <content>` or the Carl-bot dashboar
 | `/tag_template detour` | `leg`, optional `switch_time` (e.g. `10 minutes`) | Detour: arrival, both options, switch (4 tags) |
 | `/tag_template roadblock` | | Roadblock: arrival and clue (2 tags) |
 | `/tag_template pitstop` | `leg`, `season` | Pit Stop |
+
+## Mind Meld
+
+A two-player word game. Run `/mindmeld partner:@someone` (anyone can) to post a lobby with a **Submit word** button.
+
+1. Each player clicks the button and privately enters a starting word. The first to submit sees "Locked in"; when the second submits, the bot posts both words publicly.
+2. Each round, both players privately enter a word that connects the last two revealed words, and the bot reveals them together.
+3. The game ends when the two words match. Plurals, tenses and irregular forms count (rain / raining, mouse / mice), but derived forms do not (happy / happiness). If you think the bot missed a valid match, tell the organizers.
+
+A word can't be changed once locked in. Games can be played live or over hours, and expire after 24 hours with no activity. Game state is stored in a Durable Object (`MIND_MELD`), so `npm run deploy` creates it on first deploy.
 
 ## Notes
 

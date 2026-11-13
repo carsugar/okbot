@@ -52,3 +52,10 @@ export const HELP_COMMAND = {
   name: 'help',
   description: 'How to use the tag template commands.',
 };
+
+export const MINDMELD_COMMAND = {
+  name: 'mindmeld',
+  description: 'Start a Mind Meld game with a partner.',
+  contexts: [0], // guild channels only
+  options: [{ type: 6, name: 'partner', description: 'Who you are playing with', required: true }],
+};

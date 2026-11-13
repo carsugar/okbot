@@ -10,3 +10,11 @@ enabled = true
 # DISCORD_TOKEN
 # DISCORD_PUBLIC_KEY
 # DISCORD_APPLICATION_ID
+
+[[durable_objects.bindings]]
+name = "MIND_MELD"
+class_name = "MindMeldGame"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MindMeldGame"]

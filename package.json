@@ -6,11 +6,13 @@
   "scripts": {
     "start": "wrangler dev",
     "deploy": "wrangler deploy",
-    "register": "node src/register.js"
+    "register": "node src/register.js",
+    "test": "node --test"
   },
   "dependencies": {
     "discord-interactions": "^4.0.0",
-    "itty-router": "^5.0.9"
+    "itty-router": "^5.0.9",
+    "wink-lemmatizer": "^3.0.4"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
