@@ -5,12 +5,6 @@ import { newGame, submitWord } from './mindmeldRules.js';
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
 
-export const MINDMELD_COMMAND = {
-  name: 'mindmeld',
-  description: 'Start a Mind Meld game with a partner.',
-  options: [{ type: 6, name: 'partner', description: 'Who you are playing with', required: true }],
-};
-
 // ── Durable Object: one per game ──────────────────────────────────────────────
 
 export class MindMeldGame extends DurableObject {
