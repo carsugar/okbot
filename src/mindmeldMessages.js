@@ -31,7 +31,12 @@ export function lobbyText(players) {
     '3. Now each of you enters a new word that connects the two revealed words.',
     '4. Repeat until you both enter the same word.',
     '',
-    'For example, water and dirt might lead one of you to say mud and the other clay. Those two are revealed, so now you find a word that connects mud and clay. Each round, you are both aiming for the middle ground between the last two words, so think about what your partner is likely to say.',
+    'For example:',
+    'Round 1: water and dirt',
+    'Round 2: mud and clay (both sit between water and dirt)',
+    'Round 3: brick and brick (both connect mud and clay) 🎉',
+    '',
+    'That is a mind meld in 3 rounds. Each round, aim for the middle ground between the last two words, and think about what your partner is likely to say.',
   ].join('\n');
 }
 
