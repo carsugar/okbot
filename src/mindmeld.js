@@ -1,7 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
-import { newGame, submitWord } from './mindmeldRules.js';
-import { revealText } from './mindmeldMessages.js';
+import { newGame, submitWord, preflight, endGame, normalizeWord } from './mindmeldRules.js';
+import { lobbyEmbed, revealEmbed, endedEmbed, useButtonId, parseUseId } from './mindmeldMessages.js';
+import { lookupWord } from './dictionary.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
@@ -22,7 +23,13 @@ export class MindMeldGame extends DurableObject {
     const state = await this.ctx.storage.get('state');
     if (!state) return 'expired';
     if (!state.players.includes(userId)) return 'not_player';
-    return state.status === 'won' ? 'finished' : 'ok';
+    return { won: 'finished', ended: 'ended' }[state.status] ?? 'ok';
+  }
+
+  // Advisory early refusal (repeat, double submit...); `submit` stays the authority.
+  async preflight(userId, word) {
+    const state = await this.ctx.storage.get('state');
+    return state ? preflight(state, userId, word) : { type: 'expired' };
   }
 
   async submit(userId, word) {
@@ -34,31 +41,65 @@ export class MindMeldGame extends DurableObject {
     return { ...result, players: next.players, history: next.history };
   }
 
+  async end(userId) {
+    const state = await this.ctx.storage.get('state');
+    if (!state) return { type: 'expired' };
+    const { state: next, result } = endGame(state, userId, Date.now());
+    if (next !== state) await this.#save(next);
+    if (result.type !== 'ended_now') return result;
+    return { ...result, players: next.players, history: next.history };
+  }
+
   async alarm() {
     await this.ctx.storage.deleteAll();
   }
 }
 
-// ── Messages ──────────────────────────────────────────────────────────────────
+// ── Responses ─────────────────────────────────────────────────────────────────
 
 const REFUSALS = {
-  not_player: 'This is not your game.',
-  finished: 'This game is already over. Start a new one with `/mindmeld`.',
-  expired: 'This game expired. Start a new one with `/mindmeld`.',
-  invalid: 'One word only, up to 32 characters.',
-  already_submitted: 'You already locked in a word this round.',
+  not_player: () => 'This is not your game.',
+  finished: () => 'This game is already over. Start a new one with `/mindmeld`.',
+  ended: () => 'This game was ended. Start a new one with `/mindmeld`.',
+  expired: () => 'This game expired. Start a new one with `/mindmeld`.',
+  invalid: () => 'One word only, up to 32 characters.',
+  already_submitted: () => 'You already locked in a word this round.',
+  repeat: (word) => `**${word}** was already said in this game. Pick a different word.`,
 };
 
+const refusal = (type, word) => ephemeral(REFUSALS[type](word));
 const ephemeral = (content) => new JsonResponse({ type: 4, data: { content, flags: EPHEMERAL } });
+const update = (data) => new JsonResponse({ type: 7, data });
 
-const submitButton = (gameId) => ({
-  type: 1,
-  components: [{ type: 2, style: 1, label: 'Submit word', custom_id: `mm:submit:${gameId}` }],
-});
+const button = (style, label, custom_id) => ({ type: 2, style, label, custom_id });
+const row = (...components) => ({ type: 1, components });
+const playButtons = (gameId) =>
+  row(button(1, 'Submit word', `mm:submit:${gameId}`), button(4, 'End game', `mm:end:${gameId}`));
 
-function revealMessage(gameId, r) {
-  const data = { content: revealText(r), allowed_mentions: { parse: [] } };
-  return r.matched ? data : { ...data, components: [submitButton(gameId)] };
+const publicEmbed = (embed, components = []) =>
+  new JsonResponse({ type: 4, data: { embeds: [embed], components, allowed_mentions: { parse: [] } } });
+
+// The reveal is the response of whoever submitted last; a match ends the buttons.
+function outcome(gameId, result, word, onWaiting) {
+  if (result.type === 'waiting') return onWaiting();
+  if (result.type !== 'revealed') return refusal(result.type, word);
+  return publicEmbed(revealEmbed(result), result.matched ? [] : [playButtons(gameId)]);
+}
+
+const lockedIn = () => ephemeral('Locked in. Waiting for your partner.');
+const lockedInUpdate = () => update({ content: 'Locked in. Waiting for your partner.', components: [] });
+
+function unknownWordResponse(gameId, word, suggestions) {
+  const buttons = [
+    ...suggestions.map((s) => button(2, `Use "${s}"`, useButtonId(gameId, s))),
+    button(2, `Use "${word}" anyway`, useButtonId(gameId, word)),
+    button(1, 'Change word', `mm:submit:${gameId}`),
+  ];
+  const didYouMean = suggestions.length ? ' Did you mean one of these?' : '';
+  return new JsonResponse({
+    type: 4,
+    data: { content: `\`${word}\` isn't in my dictionary.${didYouMean}`, components: [row(...buttons)], flags: EPHEMERAL },
+  });
 }
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -75,45 +116,74 @@ export async function handleMindMeldCommand(interaction, env) {
   return new JsonResponse({
     type: 4,
     data: {
-      content: [
-        `<@${invokerId}> and <@${partnerId}>, it's time for **Mind Meld**!`,
-        'Each of you privately enters a word. When both are in, they are revealed together.',
-        'Then keep entering a word that connects the last two, until you land on the same one.',
-      ].join('\n'),
-      components: [submitButton(interaction.id)],
+      content: `<@${invokerId}> <@${partnerId}>`,
+      embeds: [lobbyEmbed([invokerId, partnerId])],
+      components: [playButtons(interaction.id)],
       allowed_mentions: { users: [invokerId, partnerId] },
     },
   });
 }
 
-export async function handleMindMeldComponent(interaction, env) {
-  const gameId = interaction.data.custom_id.split(':')[2];
-  const status = await gameStub(env, gameId).check(interaction.member.user.id);
-  if (status !== 'ok') return ephemeral(REFUSALS[status]);
-
-  return new JsonResponse({
+const wordModal = (gameId) =>
+  new JsonResponse({
     type: 9,
     data: {
       custom_id: `mm_modal:${gameId}`,
       title: 'Mind Meld',
       components: [
-        {
-          type: 1,
-          components: [{ type: 4, custom_id: 'word', label: 'Your word', style: 1, required: true, max_length: 32 }],
-        },
+        row({ type: 4, custom_id: 'word', label: 'Your word', style: 1, required: true, max_length: 32 }),
       ],
     },
   });
+
+export async function handleMindMeldComponent(interaction, env) {
+  const userId = interaction.member.user.id;
+  const customId = interaction.data.custom_id;
+  const [, action, gameId] = customId.split(':');
+
+  if (action === 'use') {
+    const { gameId: id, word } = parseUseId(customId);
+    return outcome(id, await gameStub(env, id).submit(userId, word), word, lockedInUpdate);
+  }
+
+  if (action === 'keep') return update({ content: 'Okay, keep playing.', components: [] });
+
+  if (action === 'endyes') {
+    const result = await gameStub(env, gameId).end(userId);
+    if (result.type !== 'ended_now') return refusal(result.type);
+    return publicEmbed(endedEmbed({ ...result, endedBy: userId }));
+  }
+
+  // submit and end both need a live game that this user is playing.
+  const status = await gameStub(env, gameId).check(userId);
+  if (status !== 'ok') return refusal(status);
+
+  if (action === 'end') {
+    return new JsonResponse({
+      type: 4,
+      data: {
+        content: 'End the game? Nothing will be scored.',
+        components: [row(button(4, 'Yes, end it', `mm:endyes:${gameId}`), button(2, 'Keep playing', `mm:keep:${gameId}`))],
+        flags: EPHEMERAL,
+      },
+    });
+  }
+  return wordModal(gameId);
 }
 
 export async function handleMindMeldModal(interaction, env) {
   const gameId = interaction.data.custom_id.split(':')[1];
+  const userId = interaction.member.user.id;
   const word = interaction.data.components
-    .flatMap((row) => row.components)
-    .find((c) => c.custom_id === 'word').value;
+    .flatMap((r) => r.components)
+    .find((c) => c.custom_id === 'word').value.trim();
+  const stub = gameStub(env, gameId);
 
-  const result = await gameStub(env, gameId).submit(interaction.member.user.id, word);
-  if (result.type === 'waiting') return ephemeral('Locked in. Waiting for your partner.');
-  if (result.type !== 'revealed') return ephemeral(REFUSALS[result.type]);
-  return new JsonResponse({ type: 4, data: revealMessage(gameId, result) });
+  const early = await stub.preflight(userId, word);
+  if (early.type !== 'ok') return refusal(early.type, word);
+
+  const { known, suggestions } = await lookupWord(word);
+  if (!known) return unknownWordResponse(gameId, word, suggestions.filter(normalizeWord));
+
+  return outcome(gameId, await stub.submit(userId, word), word, lockedIn);
 }
