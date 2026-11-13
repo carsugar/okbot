@@ -35,6 +35,9 @@ export function preflight(state, userId, rawWord) {
   return { type: 'ok' };
 }
 
+// A "Use this word" button remembers how many rounds were revealed when it was shown.
+export const isStale = (state, round) => state.history.length !== round;
+
 export function endGame(state, userId, now) {
   if (!state.players.includes(userId)) return { state, result: { type: 'not_player' } };
   const closed = closedStatus(state);

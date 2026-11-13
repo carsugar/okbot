@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
-import { newGame, submitWord, preflight, endGame, normalizeWord } from './mindmeldRules.js';
+import { newGame, submitWord, preflight, endGame, isStale, normalizeWord } from './mindmeldRules.js';
 import { lobbyEmbed, revealEmbed, endedEmbed, useButtonId, parseUseId } from './mindmeldMessages.js';
 import { lookupWord } from './dictionary.js';
 
@@ -29,12 +29,13 @@ export class MindMeldGame extends DurableObject {
   // Advisory early refusal (repeat, double submit...); `submit` stays the authority.
   async preflight(userId, word) {
     const state = await this.ctx.storage.get('state');
-    return state ? preflight(state, userId, word) : { type: 'expired' };
+    return state ? { ...preflight(state, userId, word), rounds: state.history.length } : { type: 'expired' };
   }
 
-  async submit(userId, word) {
+  async submit(userId, word, shownInRound) {
     const state = await this.ctx.storage.get('state');
     if (!state) return { type: 'expired' };
+    if (shownInRound !== undefined && state.status === 'active' && isStale(state, shownInRound)) return { type: 'stale' };
     const { state: next, result } = submitWord(state, userId, word, Date.now());
     if (next !== state) await this.#save(next);
     if (result.type !== 'revealed') return result;
@@ -64,6 +65,7 @@ const REFUSALS = {
   expired: () => 'This game expired. Start a new one with `/mindmeld`.',
   invalid: () => 'One word only, up to 32 characters.',
   already_submitted: () => 'You already locked in a word this round.',
+  stale: () => 'That prompt is out of date. Use the latest **Submit word** button.',
   repeat: (word) => `**${word}** was already said in this game. Pick a different word.`,
 };
 
@@ -89,10 +91,10 @@ function outcome(gameId, result, word, onWaiting) {
 const lockedIn = () => ephemeral('Locked in. Waiting for your partner.');
 const lockedInUpdate = () => update({ content: 'Locked in. Waiting for your partner.', components: [] });
 
-function unknownWordResponse(gameId, word, suggestions) {
+function unknownWordResponse(gameId, round, word, suggestions) {
   const buttons = [
-    ...suggestions.map((s) => button(2, `Use "${s}"`, useButtonId(gameId, s))),
-    button(2, `Use "${word}" anyway`, useButtonId(gameId, word)),
+    ...suggestions.map((s) => button(2, `Use "${s}"`, useButtonId(gameId, round, s))),
+    button(2, `Use "${word}" anyway`, useButtonId(gameId, round, word)),
     button(1, 'Change word', `mm:submit:${gameId}`),
   ];
   const didYouMean = suggestions.length ? ' Did you mean one of these?' : '';
@@ -142,8 +144,8 @@ export async function handleMindMeldComponent(interaction, env) {
   const [, action, gameId] = customId.split(':');
 
   if (action === 'use') {
-    const { gameId: id, word } = parseUseId(customId);
-    return outcome(id, await gameStub(env, id).submit(userId, word), word, lockedInUpdate);
+    const { gameId: id, round, word } = parseUseId(customId);
+    return outcome(id, await gameStub(env, id).submit(userId, word, round), word, lockedInUpdate);
   }
 
   if (action === 'keep') return update({ content: 'Okay, keep playing.', components: [] });
@@ -183,7 +185,7 @@ export async function handleMindMeldModal(interaction, env) {
   if (early.type !== 'ok') return refusal(early.type, word);
 
   const { known, suggestions } = await lookupWord(word);
-  if (!known) return unknownWordResponse(gameId, word, suggestions.filter(normalizeWord));
+  if (!known) return unknownWordResponse(gameId, early.rounds, word, suggestions.filter(normalizeWord));
 
   return outcome(gameId, await stub.submit(userId, word), word, lockedIn);
 }

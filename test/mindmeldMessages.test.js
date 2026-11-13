@@ -100,9 +100,14 @@ test('lobby embed is blurple and mentions both players', () => {
   assert.ok(PLAYERS.every((p) => e.description.includes(`<@${p}>`)));
 });
 
-test('use-button id round-trips a word containing colons and stays under 100 chars', () => {
-  assert.deepEqual(parseUseId(useButtonId('123', 'a:b:c')), { gameId: '123', word: 'a:b:c' });
-  assert.ok(useButtonId('1234567890123456789', 'x'.repeat(32)).length < 100);
+test('use-button id round-trips the round and a word containing colons, under 100 chars', () => {
+  assert.deepEqual(parseUseId(useButtonId('123', 4, 'a:b:c')), { gameId: '123', round: 4, word: 'a:b:c' });
+  assert.ok(useButtonId('1234567890123456789', 120, 'x'.repeat(32)).length < 100);
+});
+
+test('link syntax inside a word is escaped so it cannot render a masked link', () => {
+  const e = reveal([round('[a](http://b.c)', 'x')]);
+  assert.ok(e.fields[0].value.includes('\\[a\\]\\(http://b.c\\)'));
 });
 
 test('mindmeld command is guild-only so interaction.member always exists', () => {

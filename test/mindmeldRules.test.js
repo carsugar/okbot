@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeWord, wordsMatch, newGame, submitWord, preflight, endGame } from '../src/mindmeldRules.js';
+import { normalizeWord, wordsMatch, newGame, submitWord, preflight, endGame, isStale } from '../src/mindmeldRules.js';
 
 const A = 'user-a';
 const B = 'user-b';
@@ -163,4 +163,11 @@ test('submitWord on an ended game returns ended and changes nothing', () => {
   const { state, result } = submitWord(ended, A, 'oasis', 8000);
   assert.equal(result.type, 'ended');
   assert.deepEqual(state, ended);
+});
+
+test('isStale compares the round a button was shown in with revealed rounds', () => {
+  const s = afterRound1();
+  assert.equal(isStale(s, 1), false);
+  assert.equal(isStale(s, 0), true);
+  assert.equal(isStale(play(s, [A, 'oasis'], [B, 'camel']), 1), true);
 });

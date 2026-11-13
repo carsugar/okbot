@@ -2,7 +2,7 @@ const MAX_ROUNDS_SHOWN = 8;
 const COLORS = { play: 0x5865f2, match: 0xf1c40f, ended: 0x95a5a6 };
 const FOOTER = "Think this should've been a match? Ping the hosts!";
 
-const escapeMarkdown = (word) => word.replace(/[\\*_`~|<>@]/g, '\\$&');
+const escapeMarkdown = (word) => word.replace(/[\\*_`~|<>@\[\]()]/g, '\\$&');
 const mention = (id) => `<@${id}>`;
 const rounds = (n) => `${n} round${n === 1 ? '' : 's'}`;
 
@@ -62,9 +62,9 @@ export function endedEmbed({ players, history, endedBy }) {
 }
 
 // A "Use this word" button carries its word, which may itself contain ':'.
-export const useButtonId = (gameId, word) => `mm:use:${gameId}:${word}`;
+export const useButtonId = (gameId, round, word) => `mm:use:${gameId}:${round}:${word}`;
 
 export function parseUseId(customId) {
-  const [, , gameId, ...word] = customId.split(':');
-  return { gameId, word: word.join(':') };
+  const [, , gameId, round, ...word] = customId.split(':');
+  return { gameId, round: Number(round), word: word.join(':') };
 }
