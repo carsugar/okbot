@@ -14,7 +14,8 @@ const separator = () => ({ type: 14, divider: true, spacing: 2 });
 export function parseLegStart({ leg, departure, destination, money, flightTime }) {
   const [depName, depImage = ''] = departure.split('|').map((s) => s.trim());
   const [dest, site = '', airport = ''] = destination.split('|').map((s) => s.trim());
-  const slug = (dest.split(/\s+/)[0] || 'dest').replace(/[^a-z0-9]/gi, '').toLowerCase();
+  // The city is everything before the comma, each word capitalized: "New Delhi, India" is NewDelhi.
+  const slug = dest.split(',')[0].split(/\s+/).map((w) => w.replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('') || 'Dest';
   const rawMoney = money.replace(/^\$/, '').trim();
   const flight = flightTime.replace(/\bhours\b/gi, 'hour');
   return {
@@ -29,7 +30,7 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
     moneyDisplay: rawMoney ? `$${rawMoney}` : '',
     flightTime: /\bflight\b/i.test(flight) ? flight.replace(/\bhour flights?\b/i, 'hour flight') : `${flight} flight`,
     moneyCommand: `!Claim-Leg${leg}-Money`,
-    touchdownCommand: `!${slug.charAt(0).toUpperCase()}${slug.slice(1)}-Touchdown`,
+    touchdownCommand: `!${slug}-Touchdown`,
   };
 }
 
