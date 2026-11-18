@@ -148,6 +148,11 @@ export function submitAnswer(state, userId, picks, now) {
   return out.result.roundResult ? { state: out.state, result: { type: 'resolved', roundResult: out.result.roundResult } } : out;
 }
 
+// The markers after a press on a square: it is placed, or taken back if already marked. A third
+// replaces the oldest.
+export const toggleMarker = (markers, square) =>
+  markers.includes(square) ? markers.filter((m) => m !== square) : [...markers, square].slice(-2);
+
 // A press on a square: places a marker, or takes it back if it is already marked. A third
 // square replaces the oldest marker. Nothing is locked in until Lock in.
 export function placeMarker(state, userId, square, now) {
@@ -155,7 +160,7 @@ export function placeMarker(state, userId, square, now) {
   if (refused) return refuse(state, refused);
   const p = state.per[userId];
   if (now > p.deadline) return submitAnswer(state, userId, [square, square], now);
-  const markers = p.markers.includes(square) ? p.markers.filter((m) => m !== square) : [...p.markers, square].slice(-2);
+  const markers = toggleMarker(p.markers, square);
   return { state: touch(state, { per: setPer(state, userId, { markers }) }, now), result: { type: 'marked', markers } };
 }
 

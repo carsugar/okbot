@@ -1,6 +1,6 @@
 // Message text and custom ids for Memory Poker. Plain Discord markdown, kept under 2000 characters.
 import { SQUARES, handName } from './pokerRules.js';
-import { STANDARD_ROUNDS, FLASH_MS, ANSWER_MS, winsNeeded } from './pokerGame.js';
+import { STANDARD_ROUNDS, FLASH_MS, ANSWER_MS, winsNeeded, toggleMarker } from './pokerGame.js';
 import { imageUrl } from './cardImage.js';
 
 // Discord trims blank lines after a header and at the end of a message, so those gaps use this.
@@ -113,6 +113,20 @@ export const pickerComponents = (gameId, round, deadlineSec, markers, sharedImag
   })),
   { type: 1, components: [button(3, 'Lock in', plockId(gameId, round), markers.length < 2 ? { disabled: true } : {})] },
 ];
+
+// The picker as it will look after a press on `letter`, worked out from the message the
+// player pressed on, so the answer can go back at once without waiting for the game's storage.
+// Null if that message is not a picker we can read.
+export function nextPicker(message, gameId, round, letter, origin) {
+  const content = (message?.components ?? []).filter((c) => c.type === 10).map((c) => c.content).join('\n');
+  const deadline = /<t:(\d+):R>/.exec(content)?.[1];
+  const shared = (message?.attachments ?? []).map((a) => /^shared-([A-Za-z0-9]+)\.png$/.exec(a.filename)?.[1]).find(Boolean);
+  const square = SQUARES.indexOf(letter);
+  if (!deadline || !shared || square < 0) return null;
+  const selected = /Selected: \*\*(.+?)\*\*/.exec(content)?.[1].split(' + ').map((l) => SQUARES.indexOf(l)) ?? [];
+  const markers = toggleMarker(selected, square).map((i) => SQUARES[i]).join('');
+  return pickerComponents(gameId, round, Number(deadline), markers, `${origin}/mp/shared/${shared}.png`);
+}
 
 // A hand is the two picked squares followed by the three shared cards.
 const handImage = (origin, deal, picks) => gallery(imageUrl(origin, 'hand', [...picks.map((i) => deal.board[i]), ...deal.shared]));

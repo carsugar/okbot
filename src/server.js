@@ -60,7 +60,7 @@ router.post('/', async (request, env, ctx) => {
   if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
     if (interaction.data.custom_id.startsWith('mm:')) return handleMindMeldComponent(interaction, env);
     if (interaction.data.custom_id.startsWith('le:')) return handleEditorComponent(interaction, env, ctx, new URL(request.url).origin);
-    if (interaction.data.custom_id.startsWith('mp:')) return handleMemoryPokerComponent(interaction, env, new URL(request.url).origin);
+    if (interaction.data.custom_id.startsWith('mp:')) return handleMemoryPokerComponent(interaction, env, ctx, new URL(request.url).origin);
     return handleComponent(interaction);
   }
 

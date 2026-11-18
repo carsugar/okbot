@@ -7,7 +7,7 @@ import {
 } from './pokerGame.js';
 import { newLobby, claim, setBestOf, LOBBY_MS } from './pokerLobby.js';
 import {
-  lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
+  nextPicker, lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, pickerComponents, parseId,
 } from './memoryPokerMessages.js';
 import { cardPng } from './cardRoute.js';
@@ -386,7 +386,7 @@ export async function handleMemoryPokerCommand(interaction, env, origin) {
   return componentsMessage(lobbyComponents(gameId, [null, null], seconds(closesAt)));
 }
 
-export async function handleMemoryPokerComponent(interaction, env, origin) {
+export async function handleMemoryPokerComponent(interaction, env, ctx, origin) {
   const userId = interaction.member.user.id;
   const { action, gameId, round, letter } = parseId(interaction.data.custom_id);
   const stub = gameStub(env, gameId);
@@ -411,6 +411,16 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     const result = await stub.startSolo(userId, gameId, origin, appId, interaction.token);
     if (result.type !== 'ok') return refusal(result.type);
     return updateMessage(countdownComponents(COUNTDOWN_FROM, [userId], 1, { [userId]: 0 }));
+  }
+
+  if (action === 'ppick') {
+    // Answer straight from the picker the player pressed on, so the button does not wait for
+    // storage; the game records the press in the background.
+    const quick = nextPicker(interaction.message, gameId, round, letter, origin);
+    if (quick) {
+      ctx.waitUntil(stub.mark(userId, round, letter).catch(() => {}));
+      return updateMessage(quick, interaction.message);
+    }
   }
 
   if (action === 'ppick' || action === 'plock') {
