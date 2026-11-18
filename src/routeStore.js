@@ -15,6 +15,15 @@ export class RouteStore extends DurableObject {
     return slug ? ((await this.ctx.storage.get(`slug:${slug}`)) ?? null) : null;
   }
 
+  // Unsaved editor panels, keyed by the command interaction that opened them.
+  async saveDraft(id, draft) {
+    await this.ctx.storage.put(`draft:${id}`, draft);
+  }
+
+  async getDraft(id) {
+    return (await this.ctx.storage.get(`draft:${id}`)) ?? null;
+  }
+
   async get(slug) {
     return (await this.ctx.storage.get(`slug:${slug}`)) ?? null;
   }

@@ -5,7 +5,8 @@
 export const INVISIBLE = '⠀';
 
 // The header images are static files served by the Worker itself, so they never expire.
-export const routeInfoBanner = (origin) => `${origin}/img/route-info.webp`;
+export const bannerImage = (origin, banner = 'route-info') => `${origin}/img/${banner}.webp`;
+export const routeInfoBanner = (origin) => bannerImage(origin);
 
 const text = (content) => ({ type: 10, content });
 const separator = () => ({ type: 14, divider: true, spacing: 2 });
