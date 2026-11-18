@@ -39,7 +39,7 @@ test('parseLegStart copes with missing optional parts', () => {
 test('the touchdown command uses the whole city name, not just its first word', () => {
   assert.equal(parseLegStart({ ...fields, destination: 'New Delhi, India | Red Fort | Indira Gandhi International Airport' }).touchdownCommand, '!NewDelhi-Touchdown');
   assert.equal(parseLegStart({ ...fields, destination: 'machu picchu, Peru' }).touchdownCommand, '!MachuPicchu-Touchdown');
-  assert.equal(parseLegStart({ ...fields, destination: "Cote d'Ivoire" }).touchdownCommand, '!CoteDIvoire-Touchdown');
+  assert.equal(parseLegStart({ ...fields, destination: "Cote d'Ivoire" }).touchdownCommand, '!CoteDivoire-Touchdown');
 });
 
 test('flight time that already says flight is left alone', () => {
