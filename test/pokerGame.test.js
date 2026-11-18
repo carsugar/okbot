@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   FLASH_MS, ANSWER_MS, WINS_NEEDED, STANDARD_ROUNDS,
-  newGame, viewBoard, markHidden, submitAnswer, placeMarker, forfeitExpired, nextRound, isStale,
+  newGame, viewBoard, markHidden, submitAnswer, placeMarker, lockIn, forfeitExpired, nextRound, isStale,
   enqueue, takeDue, nextAlarmAt,
 } from '../src/pokerGame.js';
 
@@ -305,61 +305,73 @@ test('queue helpers keep items, split the due ones and find the next alarm', () 
   assert.equal(nextAlarmAt(q, 50), 50);
 });
 
-// ── Markers: two presses on the squares make an answer ────────────────────────
+// ── Markers and Lock in ──────────────────────────────────────────────────────
 
 const ready = () => flashed(flashed(duel(), A), B);
 const T_PICK = T0 + FLASH_MS + 1000;
+const mark = (state, id, ...squares) => squares.reduce((s, sq, i) => placeMarker(s, id, sq, T_PICK + i).state, state);
 
-test('the first marker is remembered and nothing is locked in yet', () => {
-  const { state, result } = placeMarker(ready(), A, 2, T_PICK);
-  assert.deepEqual(result, { type: 'marked', marker: 2 });
-  assert.equal(state.per[A].marker, 2);
-  assert.equal(state.per[A].answer, null);
+test('pressing squares places markers one at a time and locks nothing in', () => {
+  const first = placeMarker(ready(), A, 2, T_PICK);
+  assert.deepEqual(first.result, { type: 'marked', markers: [2] });
+  assert.equal(first.state.per[A].answer, null);
+  const second = placeMarker(first.state, A, 3, T_PICK + 1);
+  assert.deepEqual(second.result, { type: 'marked', markers: [2, 3] });
+  assert.equal(second.state.per[A].answer, null);
 });
 
-test('pressing the same square again takes the marker back', () => {
-  const marked = placeMarker(ready(), A, 2, T_PICK).state;
-  const { state, result } = placeMarker(marked, A, 2, T_PICK + 100);
-  assert.equal(result.type, 'unmarked');
-  assert.equal(state.per[A].marker, null);
+test('pressing a marked square takes its marker back', () => {
+  const { state, result } = placeMarker(mark(ready(), A, 2, 3), A, 2, T_PICK + 5);
+  assert.deepEqual(result, { type: 'marked', markers: [3] });
+  assert.deepEqual(state.per[A].markers, [3]);
 });
 
-test('a second, different square locks in both as the answer', () => {
-  const marked = placeMarker(ready(), A, 2, T_PICK).state;
-  const { state, result } = placeMarker(marked, A, 3, T_PICK + 100);
+test('a third square replaces the oldest marker', () => {
+  const { result } = placeMarker(mark(ready(), A, 2, 3), A, 5, T_PICK + 5);
+  assert.deepEqual(result.markers, [3, 5]);
+});
+
+test('Lock in needs two markers', () => {
+  assert.equal(lockIn(ready(), A, T_PICK).result.type, 'need_two');
+  assert.equal(lockIn(mark(ready(), A, 2), A, T_PICK).result.type, 'need_two');
+});
+
+test('Lock in turns the two markers into the answer', () => {
+  const { state, result } = lockIn(mark(ready(), A, 2, 3), A, T_PICK + 10);
   assert.equal(result.type, 'waiting');
   assert.deepEqual(state.per[A].answer, [2, 3]);
-  assert.equal(state.per[A].marker, null);
+  assert.deepEqual(state.per[A].markers, []);
 });
 
-test('the second answer resolves the round, same as submitting two squares', () => {
-  const afterA = placeMarker(placeMarker(ready(), A, 2, T_PICK).state, A, 3, T_PICK + 10).state;
-  const afterB1 = placeMarker(afterA, B, 0, T_PICK + 20).state;
-  const { result } = placeMarker(afterB1, B, 1, T_PICK + 30);
+test('the second Lock in resolves the round like submitting two squares', () => {
+  const afterA = lockIn(mark(ready(), A, 2, 3), A, T_PICK + 10).state;
+  const { result } = lockIn(mark(afterA, B, 0, 1), B, T_PICK + 30);
   assert.equal(result.type, 'resolved');
   assert.equal(result.roundResult.winner, A);
 });
 
-test('markers are refused for outsiders, before the board is hidden, after locking in, and once the round is over', () => {
-  assert.equal(placeMarker(ready(), 'zed', 0, T_PICK).result.type, 'not_player');
-  assert.equal(placeMarker(duel(), A, 0, T_PICK).result.type, 'not_viewed');
-  const viewedOnly = viewBoard(duel(), A, T0).state;
-  assert.equal(placeMarker(viewedOnly, A, 0, T0 + 5).result.type, 'still_looking');
-  const locked = placeMarker(placeMarker(ready(), A, 2, T_PICK).state, A, 3, T_PICK + 5).state;
-  assert.equal(placeMarker(locked, A, 4, T_PICK + 10).result.type, 'already_answered');
-  const done = playRound(duel(), BEST, WEAK).state;
-  assert.equal(placeMarker(done, A, 0, T0).result.type, 'round_over');
+test('markers and Lock in are refused for outsiders, before the board is hidden, after locking in, and once the round is over', () => {
+  for (const act of [(s, id) => placeMarker(s, id, 0, T_PICK), (s, id) => lockIn(s, id, T_PICK)]) {
+    assert.equal(act(ready(), 'zed').result.type, 'not_player');
+    assert.equal(act(duel(), A).result.type, 'not_viewed');
+    assert.equal(act(viewBoard(duel(), A, T0).state, A).result.type, 'still_looking');
+    const locked = lockIn(mark(ready(), A, 2, 3), A, T_PICK + 10).state;
+    assert.equal(act(locked, A).result.type, 'already_answered');
+    assert.equal(act(playRound(duel(), BEST, WEAK).state, A).result.type, 'round_over');
+  }
 });
 
-test('a marker after the deadline forfeits the round instead of counting', () => {
-  const { state, result } = placeMarker(ready(), A, 2, T0 + FLASH_MS + ANSWER_MS + 1);
-  assert.equal(result.type, 'late');
-  assert.equal(state.per[A].forfeited, true);
+test('a marker or Lock in after the deadline forfeits the round', () => {
+  const late = T0 + FLASH_MS + ANSWER_MS + 1;
+  const m = placeMarker(ready(), A, 2, late);
+  assert.equal(m.result.type, 'late');
+  assert.equal(m.state.per[A].forfeited, true);
+  assert.equal(lockIn(mark(ready(), B, 2, 3), B, late).result.type, 'late');
 });
 
 test('markers are per player and each round starts with none', () => {
-  const marked = placeMarker(ready(), A, 2, T_PICK).state;
-  assert.equal(marked.per[B].marker, null);
+  const marked = mark(ready(), A, 2);
+  assert.deepEqual(marked.per[B].markers, []);
   const done = playRound(duel(), BEST, WEAK).state;
-  assert.equal(nextRound(done, DEAL, T0).state.per[A].marker, null);
+  assert.deepEqual(nextRound(done, DEAL, T0).state.per[A].markers, []);
 });

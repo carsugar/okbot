@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cardLabel, lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
-  roundComponents, markerRows, joinId, pickId, nextId, parseId,
+  roundComponents, markerRows, joinId, pickId, lockInId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
 const [A, B] = ['100000000000000001', '100000000000000002'];
@@ -196,12 +196,18 @@ test('ids round trip action, game, round and square, and stay under 100 characte
   for (const id of [joinId(g, 1), pickId(g, 999, 'P'), nextId(g, 999)]) assert.ok(id.length < 100);
 });
 
-test('the marker buttons are the sixteen squares in four rows of four, available straight away', () => {
+test('the marker buttons are the sixteen squares in four rows of four, then Lock in, all available straight away', () => {
   const rows = markerRows('123', 2);
-  assert.equal(rows.length, 4);
-  assert.deepEqual(rows.map((r) => r.components.map((b) => b.label).join('')), ['ABCD', 'EFGH', 'IJKL', 'MNOP']);
+  assert.equal(rows.length, 5);
+  assert.deepEqual(rows.slice(0, 4).map((r) => r.components.map((b) => b.label).join('')), ['ABCD', 'EFGH', 'IJKL', 'MNOP']);
   assert.deepEqual(rows[1].components[2].custom_id, pickId('123', 2, 'G'));
+  assert.deepEqual(rows[4].components.map((b) => b.label), ['Lock in']);
+  assert.equal(rows[4].components[0].custom_id, lockInId('123', 2));
   assert.ok(rows.every((r) => r.components.every((b) => b.disabled === undefined)));
+});
+
+test('the Lock in id round trips', () => {
+  assert.deepEqual(parseId(lockInId('123', 4)), { action: 'lockin', gameId: '123', round: 4, letter: '' });
 });
 
 test('memorypoker command is guild-only and solo is an optional yes/no', async () => {

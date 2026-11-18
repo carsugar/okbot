@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
 import { SQUARES, deal } from './pokerRules.js';
 import {
-  newGame, viewBoard, markHidden, placeMarker, forfeitExpired, nextRound, isStale,
+  newGame, viewBoard, markHidden, placeMarker, lockIn, forfeitExpired, nextRound, isStale,
   enqueue, takeDue, nextAlarmAt, FLASH_MS,
 } from './pokerGame.js';
 import { newLobby, claim, LOBBY_MS } from './pokerLobby.js';
@@ -84,12 +84,16 @@ export class MemoryPokerGame extends DurableObject {
     await this.#startRound(newGame([userId], randomDeal(), now), token, now);
   }
 
-  // A press on square `letter`: places a marker, takes it back, or locks in a second one.
+  // A press on square `letter` places or removes a marker; `lockin` sends the two markers as the answer.
   async mark(userId, round, letter) {
+    return this.#play(userId, round, (state, now) => (letter ? placeMarker(state, userId, SQUARES.indexOf(letter), now) : lockIn(state, userId, now)));
+  }
+
+  async #play(userId, round, act) {
     const { state, queue, meta, live } = await this.#load();
     if (!state) return { type: 'expired' };
     if (isStale(state, round)) return { type: 'stale' };
-    const out = placeMarker(state, userId, SQUARES.indexOf(letter), Date.now());
+    const out = act(state, Date.now());
     const resolved = out.result.roundResult;
     if (out.state !== state) {
       // A resolved round has no answer windows left to police.
@@ -101,7 +105,8 @@ export class MemoryPokerGame extends DurableObject {
       await this.#patch(live?.token, components, meta.appId);
     }
     const answer = out.state.per[userId].answer;
-    return { ...out.result, squares: answer ? answer.map((i) => SQUARES[i]).join(' + ') : null, solo: state.mode === 'solo' };
+    const markers = out.result.markers?.map((i) => SQUARES[i]).join(' + ') ?? null;
+    return { ...out.result, markers, squares: answer ? answer.map((i) => SQUARES[i]).join(' + ') : null, solo: state.mode === 'solo' };
   }
 
   async next(userId, round, token) {
@@ -212,6 +217,7 @@ const REFUSALS = {
   late: 'Time ran out for this round.',
   invalid: 'Pick two different squares.',
   taken: 'That spot is taken.',
+  need_two: 'Place two markers first, then Lock in.',
 };
 
 const ephemeral = (content) => new JsonResponse({ type: 4, data: { content, flags: EPHEMERAL } });
@@ -256,10 +262,12 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     return refusal(result.type);
   }
 
-  if (action === 'pick') {
-    const result = await stub.mark(userId, round, letter);
-    if (result.type === 'marked') return ephemeral(`Marker on **${letter}**. Press a second square to lock in, or **${letter}** again to take it back.`);
-    if (result.type === 'unmarked') return ephemeral(`Took your marker off **${letter}**.`);
+  if (action === 'pick' || action === 'lockin') {
+    const result = await stub.mark(userId, round, action === 'pick' ? letter : '');
+    if (result.type === 'marked') {
+      return ephemeral(result.markers ? `Your markers: **${result.markers}**. Press **Lock in** when you have two.` : 'Your markers are cleared.');
+    }
+    if (result.type === 'need_two') return ephemeral('Place two markers first, then Lock in.');
     if (result.type === 'waiting') return ephemeral(`Locked in **${result.squares}**. Waiting for your opponent.`);
     if (result.type === 'resolved') return ephemeral(`Locked in **${result.squares}**. ${result.solo ? 'Your result is above.' : 'The result is in the channel.'}`);
     return refusal(result.type);

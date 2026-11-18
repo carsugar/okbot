@@ -7,7 +7,7 @@ export const ANSWER_MS = 30_000;
 export const WINS_NEEDED = 3;
 export const STANDARD_ROUNDS = 5;
 
-const blank = () => ({ viewedAt: null, hiddenAt: null, deadline: null, answer: null, forfeited: false, marker: null });
+const blank = () => ({ viewedAt: null, hiddenAt: null, deadline: null, answer: null, forfeited: false, markers: [] });
 const perPlayer = (players, make) => Object.fromEntries(players.map((id) => [id, make()]));
 const setPer = (state, id, patch) => ({ ...state.per, [id]: { ...state.per[id], ...patch } });
 const touch = (state, patch, now) => ({ ...state, ...patch, updatedAt: now });
@@ -135,25 +135,30 @@ export function submitAnswer(state, userId, picks, now) {
     const forfeited = touch(state, { per: setPer(state, userId, { forfeited: true }) }, now);
     return closeIfDone(forfeited, now, 'late');
   }
-  const answered = touch(state, { per: setPer(state, userId, { answer: picks, marker: null }) }, now);
+  const answered = touch(state, { per: setPer(state, userId, { answer: picks, markers: [] }) }, now);
   const out = closeIfDone(answered, now, 'waiting');
   return out.result.roundResult ? { state: out.state, result: { type: 'resolved', roundResult: out.result.roundResult } } : out;
 }
 
-// A press on a square. The first places a marker, pressing it again takes it back, and a
-// second, different square locks both in as the answer.
+// A press on a square: places a marker, or takes it back if it is already marked. A third
+// square replaces the oldest marker. Nothing is locked in until Lock in.
 export function placeMarker(state, userId, square, now) {
   const refused = answerGate(state, userId);
   if (refused) return refuse(state, refused);
   const p = state.per[userId];
   if (now > p.deadline) return submitAnswer(state, userId, [square, square], now);
-  if (p.marker === null) {
-    return { state: touch(state, { per: setPer(state, userId, { marker: square }) }, now), result: { type: 'marked', marker: square } };
-  }
-  if (p.marker === square) {
-    return { state: touch(state, { per: setPer(state, userId, { marker: null }) }, now), result: { type: 'unmarked' } };
-  }
-  return submitAnswer(state, userId, [p.marker, square], now);
+  const markers = p.markers.includes(square) ? p.markers.filter((m) => m !== square) : [...p.markers, square].slice(-2);
+  return { state: touch(state, { per: setPer(state, userId, { markers }) }, now), result: { type: 'marked', markers } };
+}
+
+// Lock in the two markers as the answer.
+export function lockIn(state, userId, now) {
+  const refused = answerGate(state, userId);
+  if (refused) return refuse(state, refused);
+  const { markers, deadline } = state.per[userId];
+  if (now > deadline) return submitAnswer(state, userId, markers, now);
+  if (markers.length !== 2) return refuse(state, 'need_two');
+  return submitAnswer(state, userId, markers, now);
 }
 
 // Forfeit anyone whose answer window has passed. `resolved` is the round result if that ended the round.
