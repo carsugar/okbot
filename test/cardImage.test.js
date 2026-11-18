@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { boardSvg, sharedSvg, handSvg, cardCode, parseCards, imageUrl, svgFor } from '../src/cardImage.js';
+import { boardSvg, hiddenSvg, handSvg, cardCode, parseCards, imageUrl, svgFor } from '../src/cardImage.js';
 
 const RANK = { 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, T: 10, J: 11, Q: 12, K: 13, A: 14 };
 const card = (s) => ({ rank: RANK[s[0]], suit: s[1] });
@@ -19,18 +19,32 @@ test('parseCards rejects bad ranks, bad suits, odd lengths and lowercase', () =>
 });
 
 test('image urls are stateless, so they carry the cards and nothing else', () => {
-  assert.equal(imageUrl(ORIGIN, 'shared', SHARED), `${ORIGIN}/mp/shared/KSKD2H.png`);
+  assert.equal(imageUrl(ORIGIN, 'hidden', SHARED), `${ORIGIN}/mp/hidden/KSKD2H.png`);
 });
 
-test('board drawing has 16 cards, the squares A to P, and both suit colors', () => {
+test('the board is 16 face-up cards with no square letters, in both suit colors', () => {
   const svg = boardSvg(BOARD);
   assert.equal(svg.split('<g ').length - 1, 16);
-  for (const letter of 'ABCDEFGHIJKLMNOP') assert.ok(svg.includes(`>${letter}</text>`), letter);
+  assert.doesNotMatch(svg, /font-size="60"/);
   assert.ok(svg.includes('#d62f3a') && svg.includes('#1c1f26'));
 });
 
-test('shared and hand drawings have no square letters and the right number of cards', () => {
-  assert.equal(sharedSvg(SHARED).split('<g ').length - 1, 3);
+test('the hidden view is 16 lettered card backs plus the three shared cards face up', () => {
+  const svg = hiddenSvg(SHARED);
+  assert.equal(svg.split('<g ').length - 1, 19);
+  for (const letter of 'ABCDEFGHIJKLMNOP') assert.ok(svg.includes(`>${letter}</text>`), letter);
+  assert.ok(svg.includes('>K</text>') && svg.includes('>2</text>'));
+});
+
+test('the hidden view puts the shared cards on their own row below the grid', () => {
+  const svg = hiddenSvg(SHARED);
+  const ys = [...svg.matchAll(/translate\(([\d.]+) ([\d.]+)\)/g)].map((m) => Number(m[2]));
+  assert.equal(new Set(ys).size, 5);
+  assert.equal(ys.slice(-3).every((y) => y === ys.at(-1)), true);
+  assert.ok(ys.at(-1) > ys.at(-4) + 140);
+});
+
+test('a hand drawing has five face-up cards and no letters', () => {
   const hand = handSvg([BOARD[2], BOARD[3]], SHARED);
   assert.equal(hand.split('<g ').length - 1, 5);
   assert.doesNotMatch(hand, /<circle/);
@@ -38,9 +52,9 @@ test('shared and hand drawings have no square letters and the right number of ca
 
 test('svgFor builds a drawing only for the right card counts and rejects repeats', () => {
   assert.ok(svgFor('board', BOARD));
-  assert.ok(svgFor('shared', SHARED));
+  assert.ok(svgFor('hidden', SHARED));
   assert.ok(svgFor('hand', [...BOARD.slice(0, 2), ...SHARED]));
   assert.equal(svgFor('board', BOARD.slice(0, 15)), null);
-  assert.equal(svgFor('shared', [SHARED[0], SHARED[0], SHARED[1]]), null);
+  assert.equal(svgFor('hidden', [SHARED[0], SHARED[0], SHARED[1]]), null);
   assert.equal(svgFor('nope', SHARED), null);
 });

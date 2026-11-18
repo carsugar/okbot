@@ -61,8 +61,8 @@ export const boardComponents = (board, hideAtSec, origin) => [
 ];
 
 export const hiddenComponents = (shared, deadlineSec, origin) => [
-  text('## 🃏 Board hidden\nThe shared cards:'),
-  gallery(imageUrl(origin, 'shared', shared)),
+  text('## 🃏 Board hidden\nYour cards are face down, lettered A to P. The three shared cards are on the bottom row.'),
+  gallery(imageUrl(origin, 'hidden', shared)),
   text(`-# Pick your two squares <t:${deadlineSec}:R>`),
 ];
 

@@ -68,11 +68,11 @@ test('board message is a title with a countdown and the board picture', () => {
   assert.deepEqual(images(parts), [boardUrl]);
 });
 
-test('hidden message shows the three shared cards as a picture and the answer deadline', () => {
+test('hidden message shows the face-down lettered cards and the shared cards as one picture and the answer deadline', () => {
   const parts = hiddenComponents(DEAL.shared, 1_700_000_060, ORIGIN);
   assert.match(texts(parts), /## 🃏 Board hidden/);
   assert.ok(texts(parts).includes('<t:1700000060:R>'));
-  assert.deepEqual(images(parts), [`${ORIGIN}/mp/shared/KSKD2H.png`]);
+  assert.deepEqual(images(parts), [`${ORIGIN}/mp/hidden/KSKD2H.png`]);
 });
 
 const duelResult = (over = {}) => ({
