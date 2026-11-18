@@ -11,10 +11,8 @@ const fields = {
   money: '$15',
   flightTime: '3 hours',
 };
-// Sections hold their text inside, so look through them.
-const flatten = (embed) => embed.component.components.flatMap((c) => (c.type === 9 ? c.components : [c]));
-const texts = (embed) => flatten(embed).filter((c) => c.type === 10).map((c) => c.content).join('\n');
-const sections = (embed) => embed.component.components.filter((c) => c.type === 9);
+const texts = (embed) => embed.component.components.filter((c) => c.type === 10).map((c) => c.content).join('\n');
+const lines = (embed) => embed.component.components.filter((c) => c.type === 10).map((c) => c.content);
 
 test('parseLegStart splits the pipe fields and normalizes money and flight time', () => {
   const d = parseLegStart(fields);
@@ -63,25 +61,23 @@ test('card is one container: the banner image is the title, then the leg text', 
   assert.match(t, /\*\*Cajón del Maipo\*\*/);
   assert.match(t, /`!Claim-Leg3-Money`/);
   assert.match(t, /`!Santiago-Touchdown`.*SCL Airport/);
-  assert.equal(sections(embed).length, 2);
 });
 
-test('money and touchdown have no titles, just a plane or money icon beside the text', () => {
+test('money and touchdown have no titles, just an emoji at the left of the text', () => {
   const embed = legStartEmbed(parseLegStart(fields), IMAGE);
-  const [money, touchdown] = sections(embed);
   assert.doesNotMatch(texts(embed), /Leg money|Touchdown\n|###/);
-  assert.equal(money.accessory.type, 11);
-  assert.equal(money.accessory.media.url, 'https://example.com/money.png');
-  assert.match(money.components[0].content, /You have received \*\*\$15\*\* for this leg/);
-  assert.equal(touchdown.accessory.media.url, 'https://example.com/plane.png');
-  assert.match(touchdown.components[0].content, /officially land at \*\*SCL Airport\*\*/);
+  assert.ok(embed.component.components.every((c) => c.type !== 9 && !c.accessory));
+  const money = lines(embed).find((l) => l.startsWith('💵 '));
+  const touchdown = lines(embed).find((l) => l.startsWith('✈️ '));
+  assert.match(money, /^💵 You have received \*\*\$15\*\* for this leg/);
+  assert.match(touchdown, /^✈️ Use the command `!Santiago-Touchdown` to officially land at \*\*SCL Airport\*\*/);
 });
 
 test('no money means no money section; no airport changes the touchdown line', () => {
   const t = texts(legStartEmbed(parseLegStart({ ...fields, money: '', destination: 'Santiago, Chile | Cajón del Maipo' }), IMAGE));
   assert.doesNotMatch(t, /Claim-Leg/);
   assert.match(t, /officially land\./);
-  assert.equal(sections(legStartEmbed(parseLegStart({ ...fields, money: '' }), IMAGE)).length, 1);
+  assert.equal(lines(legStartEmbed(parseLegStart({ ...fields, money: '' }), IMAGE)).filter((l) => l.startsWith('💵')).length, 0);
 });
 
 test('card stays under 3,000 bytes for typical input and rejects nothing silently', () => {

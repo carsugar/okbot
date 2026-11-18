@@ -7,7 +7,7 @@ export const ANSWER_MS = 30_000;
 export const WINS_NEEDED = 3;
 export const STANDARD_ROUNDS = 5;
 
-const blank = () => ({ viewedAt: null, hiddenAt: null, deadline: null, answer: null, forfeited: false });
+const blank = () => ({ viewedAt: null, hiddenAt: null, deadline: null, answer: null, forfeited: false, marker: null });
 const perPlayer = (players, make) => Object.fromEntries(players.map((id) => [id, make()]));
 const setPer = (state, id, patch) => ({ ...state.per, [id]: { ...state.per[id], ...patch } });
 const touch = (state, patch, now) => ({ ...state, ...patch, updatedAt: now });
@@ -114,23 +114,46 @@ function closeIfDone(state, now, type) {
   return { state: resolved.state, result: { type, roundResult: resolved.roundResult } };
 }
 
-export function submitAnswer(state, userId, picks, now) {
-  if (!state.players.includes(userId)) return refuse(state, 'not_player');
+// Why this player cannot answer right now, or null if they can.
+function answerGate(state, userId) {
+  if (!state.players.includes(userId)) return 'not_player';
   const closed = closedReason(state);
-  if (closed) return refuse(state, closed);
+  if (closed) return closed;
   const p = state.per[userId];
-  if (p.viewedAt === null) return refuse(state, 'not_viewed');
-  if (p.answer !== null) return refuse(state, 'already_answered');
-  if (p.forfeited) return refuse(state, 'late');
-  if (p.hiddenAt === null) return refuse(state, 'still_looking');
+  if (p.viewedAt === null) return 'not_viewed';
+  if (p.answer !== null) return 'already_answered';
+  if (p.forfeited) return 'late';
+  if (p.hiddenAt === null) return 'still_looking';
+  return null;
+}
 
+export function submitAnswer(state, userId, picks, now) {
+  const refused = answerGate(state, userId);
+  if (refused) return refuse(state, refused);
+  const p = state.per[userId];
   if (now > p.deadline) {
     const forfeited = touch(state, { per: setPer(state, userId, { forfeited: true }) }, now);
     return closeIfDone(forfeited, now, 'late');
   }
-  const answered = touch(state, { per: setPer(state, userId, { answer: picks }) }, now);
+  const answered = touch(state, { per: setPer(state, userId, { answer: picks, marker: null }) }, now);
   const out = closeIfDone(answered, now, 'waiting');
   return out.result.roundResult ? { state: out.state, result: { type: 'resolved', roundResult: out.result.roundResult } } : out;
+}
+
+// A press on a square. The first places a marker, pressing it again takes it back, and a
+// second, different square locks both in as the answer.
+export function placeMarker(state, userId, square, now) {
+  const refused = answerGate(state, userId);
+  if (refused) return refuse(state, refused);
+  const p = state.per[userId];
+  if (now > p.deadline) return submitAnswer(state, userId, [square, square], now);
+  if (p.marker === null) {
+    return { state: touch(state, { per: setPer(state, userId, { marker: square }) }, now), result: { type: 'marked', marker: square } };
+  }
+  if (p.marker === square) {
+    return { state: touch(state, { per: setPer(state, userId, { marker: null }) }, now), result: { type: 'unmarked' } };
+  }
+  return submitAnswer(state, userId, [p.marker, square], now);
 }
 
 // Forfeit anyone whose answer window has passed. `resolved` is the round result if that ended the round.

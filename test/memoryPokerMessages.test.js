@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cardLabel, lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
-  pickerComponents, openRow, roundComponents, pickerRows, joinId, openId, pickId, lockId, clearId, nextId, parseId,
+  roundComponents, markerRows, joinId, pickId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
 const [A, B] = ['100000000000000001', '100000000000000002'];
@@ -98,18 +98,6 @@ test('hidden message shows the face-down lettered cards and the shared cards as 
   assert.deepEqual(images(parts), [`${ORIGIN}/mp/hidden/KSKD2H.png`]);
 });
 
-test('the Place markers button opens the private picker for that round', () => {
-  const [b] = openRow(GAME, 4).components;
-  assert.equal(b.label, 'Place markers');
-  assert.equal(b.custom_id, openId(GAME, 4));
-});
-
-test('the private picker shows the deadline and the current selection', () => {
-  assert.ok(texts(pickerComponents(1_700_000_060, '')).includes('<t:1700000060:R>'));
-  assert.doesNotMatch(texts(pickerComponents(1_700_000_060, '')), /Selected/);
-  assert.match(texts(pickerComponents(1_700_000_060, 'CJ')), /Selected: \*\*C \+ J\*\*/);
-});
-
 const duelResult = (over = {}) => ({
   round: 2, outcome: 'win', winner: A,
   hands: { [A]: hand(7, [13, 2]), [B]: hand(2, [13, 4, 2]) },
@@ -200,47 +188,20 @@ test('every text stays well under Discord limits with long mention ids', () => {
   for (const t of all) assert.ok(t.length <= LIMIT, `length ${t.length}`);
 });
 
-test('ids round trip action, game, round, selection and letter, and stay under 100 characters', () => {
+test('ids round trip action, game, round and square, and stay under 100 characters', () => {
   const g = '1234567890123456789';
-  assert.deepEqual(parseId(joinId(g, 1)), { action: 'join', gameId: g, round: 1, sel: '', letter: '' });
-  assert.deepEqual(parseId(openId(g, 4)), { action: 'open', gameId: g, round: 4, sel: '', letter: '' });
-  assert.deepEqual(parseId(pickId(g, 12, 'C', 'J')), { action: 'pick', gameId: g, round: 12, sel: 'C', letter: 'J' });
-  assert.deepEqual(parseId(lockId(g, 7, 'CJ')), { action: 'lock', gameId: g, round: 7, sel: 'CJ', letter: '' });
-  assert.deepEqual(parseId(clearId(g, 7)), { action: 'clear', gameId: g, round: 7, sel: '', letter: '' });
-  assert.deepEqual(parseId(nextId(g, 7)), { action: 'next', gameId: g, round: 7, sel: '', letter: '' });
-  for (const id of [joinId(g, 1), openId(g, 999), pickId(g, 999, 'AB', 'P'), lockId(g, 999, 'AB'), clearId(g, 999), nextId(g, 999)]) assert.ok(id.length < 100);
+  assert.deepEqual(parseId(joinId(g, 1)), { action: 'join', gameId: g, round: 1, letter: '' });
+  assert.deepEqual(parseId(pickId(g, 12, 'J')), { action: 'pick', gameId: g, round: 12, letter: 'J' });
+  assert.deepEqual(parseId(nextId(g, 7)), { action: 'next', gameId: g, round: 7, letter: '' });
+  for (const id of [joinId(g, 1), pickId(g, 999, 'P'), nextId(g, 999)]) assert.ok(id.length < 100);
 });
 
-const buttonsOf = (rows) => rows.flatMap((r) => r.components);
-
-test('the picker is sixteen letter buttons in four rows of four, then Lock in and Clear', () => {
-  const rows = pickerRows('123', 2, '');
-  assert.equal(rows.length, 5);
-  assert.deepEqual(rows.slice(0, 4).map((r) => r.components.map((b) => b.label).join('')), ['ABCD', 'EFGH', 'IJKL', 'MNOP']);
-  assert.deepEqual(rows[4].components.map((b) => b.label), ['Lock in', 'Clear']);
-  assert.ok(rows.every((r) => r.components.length <= 5));
-});
-
-test('nothing is selected at first: Lock in and Clear are disabled', () => {
-  const [lock, clear] = pickerRows('123', 2, '')[4].components;
-  assert.equal(lock.disabled, true);
-  assert.equal(clear.disabled, true);
-});
-
-test('selected squares are highlighted and each button remembers the selection', () => {
-  const rows = pickerRows('123', 2, 'C');
-  const all = buttonsOf(rows.slice(0, 4));
-  assert.equal(all.find((b) => b.label === 'C').style, 1);
-  assert.equal(all.find((b) => b.label === 'D').style, 2);
-  assert.equal(all.find((b) => b.label === 'D').custom_id, pickId('123', 2, 'C', 'D'));
-  assert.equal(rows[4].components[0].disabled, true);
-  assert.equal(rows[4].components[1].disabled, undefined);
-});
-
-test('with two squares selected Lock in is enabled and carries both', () => {
-  const [lock] = pickerRows('123', 2, 'CJ')[4].components;
-  assert.equal(lock.disabled, undefined);
-  assert.equal(lock.custom_id, lockId('123', 2, 'CJ'));
+test('the marker buttons are the sixteen squares in four rows of four, available straight away', () => {
+  const rows = markerRows('123', 2);
+  assert.equal(rows.length, 4);
+  assert.deepEqual(rows.map((r) => r.components.map((b) => b.label).join('')), ['ABCD', 'EFGH', 'IJKL', 'MNOP']);
+  assert.deepEqual(rows[1].components[2].custom_id, pickId('123', 2, 'G'));
+  assert.ok(rows.every((r) => r.components.every((b) => b.disabled === undefined)));
 });
 
 test('memorypoker command is guild-only and solo is an optional yes/no', async () => {

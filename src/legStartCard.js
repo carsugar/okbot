@@ -34,12 +34,9 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
   };
 }
 
-// Money and touchdown are a line of text with a small icon beside it, no title. The icons are
-// hosted next to the banners.
-const withIcon = (content, icon) => ({ type: 9, components: [text(content)], accessory: { type: 11, media: { url: icon } } });
+// Money and touchdown have no title: just an emoji at the left of the line.
 
 export function legStartEmbed(d, headerImage) {
-  const images = headerImage.slice(0, headerImage.lastIndexOf('/'));
   const parts = [
     { type: 12, items: [{ media: { url: headerImage } }] },
     text(`Make your way from **${d.departure}** to your next destination, **${d.destination}!**`),
@@ -53,18 +50,14 @@ export function legStartEmbed(d, headerImage) {
   ];
   if (d.moneyDisplay) {
     parts.push(
-      withIcon(
-        `You have received **${d.moneyDisplay}** for this leg. Use the command \`${d.moneyCommand}\` to claim it. ` +
+      text(
+        `💵 You have received **${d.moneyDisplay}** for this leg. Use the command \`${d.moneyCommand}\` to claim it. ` +
           'Only one designated partner should use this command.',
-        `${images}/money.png`,
       ),
     );
   }
   parts.push(
-    withIcon(
-      `Use the command \`${d.touchdownCommand}\` to officially land` + (d.airport ? ` at **${d.airport}**.` : '.'),
-      `${images}/plane.png`,
-    ),
+    text(`✈️ Use the command \`${d.touchdownCommand}\` to officially land` + (d.airport ? ` at **${d.airport}**.` : '.')),
   );
   return { component: { type: 17, accent_color: 0xf2c230, components: parts } };
 }

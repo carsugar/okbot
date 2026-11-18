@@ -1,14 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
 import { JsonResponse } from './utils.js';
-import { SQUARES, deal, parseAnswer } from './pokerRules.js';
+import { SQUARES, deal } from './pokerRules.js';
 import {
-  newGame, viewBoard, markHidden, submitAnswer, forfeitExpired, nextRound, isStale,
+  newGame, viewBoard, markHidden, placeMarker, forfeitExpired, nextRound, isStale,
   enqueue, takeDue, nextAlarmAt, FLASH_MS,
 } from './pokerGame.js';
 import { newLobby, claim, LOBBY_MS } from './pokerLobby.js';
 import {
   lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
-  pickerComponents, openRow, roundComponents, pickerRows, joinId, nextId, parseId,
+  roundComponents, markerRows, nextId, parseId,
 } from './memoryPokerMessages.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -84,28 +84,12 @@ export class MemoryPokerGame extends DurableObject {
     await this.#startRound(newGame([userId], randomDeal(), now), token, now);
   }
 
-  // Read-only gate before the picker opens or changes. `answer` stays the authority.
-  async check(userId, round) {
-    const { state } = await this.#load();
-    if (!state) return { type: 'expired' };
-    if (isStale(state, round)) return { type: 'stale' };
-    if (!state.players.includes(userId)) return { type: 'not_player' };
-    if (state.status === 'finished') return { type: 'finished' };
-    if (!state.roundOpen) return { type: 'round_over' };
-    const p = state.per[userId];
-    if (p.answer !== null) return { type: 'already_answered' };
-    if (p.forfeited || (p.deadline !== null && Date.now() > p.deadline)) return { type: 'late' };
-    if (p.hiddenAt === null) return { type: 'still_looking' };
-    return { type: 'ok', deadline: p.deadline };
-  }
-
-  async answer(userId, round, text) {
-    const parsed = parseAnswer(text);
-    if (!parsed.ok) return { type: 'invalid' };
+  // A press on square `letter`: places a marker, takes it back, or locks in a second one.
+  async mark(userId, round, letter) {
     const { state, queue, meta, live } = await this.#load();
     if (!state) return { type: 'expired' };
     if (isStale(state, round)) return { type: 'stale' };
-    const out = submitAnswer(state, userId, parsed.picks, Date.now());
+    const out = placeMarker(state, userId, SQUARES.indexOf(letter), Date.now());
     const resolved = out.result.roundResult;
     if (out.state !== state) {
       // A resolved round has no answer windows left to police.
@@ -116,7 +100,8 @@ export class MemoryPokerGame extends DurableObject {
       const components = resolved ? this.#resultParts(meta, out.state, resolved) : this.#hiddenParts(meta, out.state);
       await this.#patch(live?.token, components, meta.appId);
     }
-    return { ...out.result, picks: parsed.picks, solo: state.mode === 'solo' };
+    const answer = out.state.per[userId].answer;
+    return { ...out.result, squares: answer ? answer.map((i) => SQUARES[i]).join(' + ') : null, solo: state.mode === 'solo' };
   }
 
   async next(userId, round, token) {
@@ -184,7 +169,7 @@ export class MemoryPokerGame extends DurableObject {
     const deadline = state.per[state.players[0]].deadline;
     return [
       ...hiddenComponents(state.deal.shared, seconds(deadline), meta.origin, lockStatus(state.players, state.per)),
-      openRow(meta.gameId, state.round),
+      ...markerRows(meta.gameId, state.round),
     ];
   }
 
@@ -257,12 +242,9 @@ export async function handleMemoryPokerCommand(interaction, env, origin) {
   return componentsMessage(lobbyComponents(gameId, [null, null], seconds(closesAt)));
 }
 
-// A third pick replaces the oldest one, and picking a chosen square takes it off.
-const togglePick = (sel, letter) => (sel.includes(letter) ? sel.replace(letter, '') : (sel + letter).slice(-2));
-
 export async function handleMemoryPokerComponent(interaction, env, origin) {
   const userId = interaction.member.user.id;
-  const { action, gameId, round, sel, letter } = parseId(interaction.data.custom_id);
+  const { action, gameId, round, letter } = parseId(interaction.data.custom_id);
   const stub = gameStub(env, gameId);
 
   if (action === 'join') {
@@ -274,25 +256,12 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     return refusal(result.type);
   }
 
-  if (action === 'open') {
-    const view = await stub.check(userId, round);
-    if (view.type !== 'ok') return refusal(view.type);
-    return componentsMessage([...pickerComponents(seconds(view.deadline), ''), ...pickerRows(gameId, round, '')], EPHEMERAL);
-  }
-
-  if (action === 'pick' || action === 'clear') {
-    const view = await stub.check(userId, round);
-    if (view.type !== 'ok') return refusal(view.type);
-    const next = action === 'clear' ? '' : togglePick(sel, letter);
-    return updateMessage([...pickerComponents(seconds(view.deadline), next), ...pickerRows(gameId, round, next)]);
-  }
-
-  if (action === 'lock') {
-    if (sel.length !== 2) return ephemeral('Pick two squares first.');
-    const result = await stub.answer(userId, round, `${sel[0]} ${sel[1]}`);
-    const squares = [...sel].join(' + ');
-    if (result.type === 'waiting') return updateMessage([{ type: 10, content: `Locked in **${squares}**. Waiting for your opponent.` }]);
-    if (result.type === 'resolved') return updateMessage([{ type: 10, content: `Locked in **${squares}**. ${result.solo ? 'Your result is above.' : 'The result is in the channel.'}` }]);
+  if (action === 'pick') {
+    const result = await stub.mark(userId, round, letter);
+    if (result.type === 'marked') return ephemeral(`Marker on **${letter}**. Press a second square to lock in, or **${letter}** again to take it back.`);
+    if (result.type === 'unmarked') return ephemeral(`Took your marker off **${letter}**.`);
+    if (result.type === 'waiting') return ephemeral(`Locked in **${result.squares}**. Waiting for your opponent.`);
+    if (result.type === 'resolved') return ephemeral(`Locked in **${result.squares}**. ${result.solo ? 'Your result is above.' : 'The result is in the channel.'}`);
     return refusal(result.type);
   }
 

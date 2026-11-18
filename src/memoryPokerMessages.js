@@ -75,36 +75,15 @@ export const boardComponents = (board, hideAtSec, origin) => [
 export const hiddenComponents = (shared, deadlineSec, origin, status) => [
   text('## 🃏 Board hidden\nYour cards are face down, lettered A to P. The three shared cards are on the bottom row.'),
   gallery(imageUrl(origin, 'hidden', shared)),
-  text(`-# Place your two markers <t:${deadlineSec}:R>\n${status}`),
+  text(`-# Press two squares to place your markers <t:${deadlineSec}:R>\n${status}`),
 ];
 
-export const openRow = (gameId, round) => ({ type: 1, components: [button(1, 'Place markers', openId(gameId, round))] });
-
-// The private message each player picks their squares in. `sel` is the picks so far, like 'CJ'.
-export const pickerComponents = (deadlineSec, sel) => [
-  text(`## 🃏 Place your markers\n-# Pick two squares, then Lock in <t:${deadlineSec}:R>` + (sel ? `\nSelected: **${[...sel].join(' + ')}**` : '')),
-];
-
-// Sixteen square buttons (the picks so far are highlighted), then Lock in and Clear.
-export function pickerRows(gameId, round, sel) {
-  const rows = [0, 1, 2, 3].map((r) => ({
+// The sixteen squares as buttons, on the public message. Two presses lock in a player's answer.
+export const markerRows = (gameId, round) =>
+  [0, 1, 2, 3].map((r) => ({
     type: 1,
-    components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => ({
-      type: 2,
-      style: sel.includes(letter) ? 1 : 2,
-      label: letter,
-      custom_id: pickId(gameId, round, sel, letter),
-    })),
+    components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => button(2, letter, pickId(gameId, round, letter))),
   }));
-  rows.push({
-    type: 1,
-    components: [
-      { type: 2, style: 3, label: 'Lock in', custom_id: lockId(gameId, round, sel), ...(sel.length < 2 && { disabled: true }) },
-      { type: 2, style: 2, label: 'Clear', custom_id: clearId(gameId, round), ...(!sel && { disabled: true }) },
-    ],
-  });
-  return rows;
-}
 
 // A hand is the two picked squares followed by the three shared cards.
 const handImage = (origin, deal, picks) => gallery(imageUrl(origin, 'hand', [...picks.map((i) => deal.board[i]), ...deal.shared]));
@@ -148,13 +127,10 @@ export function roundComponents(players, result, deal, origin) {
 
 // A join button carries its spot (0 or 1) where other ids carry the round.
 export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
-export const openId = (gameId, round) => `mp:open:${gameId}:${round}`;
-export const pickId = (gameId, round, sel, letter) => `mp:pick:${gameId}:${round}:${sel}:${letter}`;
-export const lockId = (gameId, round, sel) => `mp:lock:${gameId}:${round}:${sel}`;
-export const clearId = (gameId, round) => `mp:clear:${gameId}:${round}`;
+export const pickId = (gameId, round, letter) => `mp:pick:${gameId}:${round}:${letter}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;
 
 export function parseId(customId) {
-  const [, action, gameId, round, sel = '', letter = ''] = customId.split(':');
-  return { action, gameId, round: Number(round), sel, letter };
+  const [, action, gameId, round, letter = ''] = customId.split(':');
+  return { action, gameId, round: Number(round), letter };
 }
