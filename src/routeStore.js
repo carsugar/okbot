@@ -33,6 +33,15 @@ export class RouteStore extends DurableObject {
     return (await this.ctx.storage.get(`saved:${key}`)) ?? null;
   }
 
+  // Pictures already drawn for Memory Poker, so a repeat request is a read, not a redraw.
+  async getImage(key) {
+    return (await this.ctx.storage.get(`img:${key}`)) ?? null;
+  }
+
+  async saveImage(key, png) {
+    await this.ctx.storage.put(`img:${key}`, png);
+  }
+
   async get(slug) {
     return (await this.ctx.storage.get(`slug:${slug}`)) ?? null;
   }

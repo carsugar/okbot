@@ -10,6 +10,8 @@ import {
   lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, pickerComponents, parseId,
 } from './memoryPokerMessages.js';
+import { cardPng } from './cardRoute.js';
+import { routeStore } from './routeStore.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
@@ -54,6 +56,9 @@ export class MemoryPokerGame extends DurableObject {
     await this.ctx.storage.put({ live: { token }, tokens });
     await this.ctx.storage.delete('pickers');
     await this.#save(state, countdownQueue(now));
+    // Draw this round's pictures during the countdown so they are ready when the cards flip.
+    const { board, shared } = state.deal;
+    this.ctx.waitUntil(Promise.all([cardPng(routeStore(this.env), 'board', board), cardPng(routeStore(this.env), 'hidden', shared)]).catch(() => {}));
   }
 
   async openLobby(gameId, origin, appId, token) {

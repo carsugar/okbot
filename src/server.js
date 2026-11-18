@@ -38,7 +38,7 @@ router.get('/route/:slug', async (request, env) => {
   });
 });
 
-router.get('/mp/:kind/:file', (request, env, ctx) => cardImageResponse(request, ctx));
+router.get('/mp/:kind/:file', (request, env, ctx) => cardImageResponse(request, routeStore(env)));
 
 router.post('/', async (request, env, ctx) => {
   const { isValid, interaction } = await verifyDiscordRequest(request, env);
