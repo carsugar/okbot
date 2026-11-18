@@ -1,5 +1,6 @@
 import { AutoRouter } from 'itty-router';
 import { sampleRouteInfoEmbed, embedPageHtml } from './routeEmbedPage.js';
+import { ROUTE_INFO_HEADER_IMAGE } from './tagTemplates.js';
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
@@ -14,7 +15,7 @@ router.get('/', (request, env) => {
 });
 
 router.get('/route/preview', () =>
-  new Response(embedPageHtml(sampleRouteInfoEmbed(), { title: 'Route Info: Leg 3', description: 'Sample Route Info card' }), {
+  new Response(embedPageHtml(sampleRouteInfoEmbed(ROUTE_INFO_HEADER_IMAGE), { title: 'Route Info: Leg 3', description: 'Sample Route Info card' }), {
     headers: { 'Content-Type': 'text/html;charset=UTF-8' },
   }));
 

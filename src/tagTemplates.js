@@ -5,7 +5,7 @@ import { routeInfoPreviewMessage } from "./routeInfoPreview.js";
 
 const ROADBLOCK_HEADER_IMAGE =
   "https://media.discordapp.net/attachments/1259308675282239599/1266871294452957234/Clue-Roadblock.webp?ex=69d62115&is=69d4cf95&hm=816003949a0106d55baf324ef16073384f20ee7405e353953656bba6b6de7275&=&format=webp&width=300&height=638";
-const ROUTE_INFO_HEADER_IMAGE =
+export const ROUTE_INFO_HEADER_IMAGE =
   "https://media.discordapp.net/attachments/1259308675282239599/1266871294121476267/Clue-information.webp?ex=69218395&is=69203215&hm=e12568119af867d0dce0ffedf3a6e3ba29c5e44b6c635cd68533cf0513388dac&format=webp&width=256&height=560&";
 
 const DETOUR_HEADER_IMAGE =
