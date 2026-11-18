@@ -41,7 +41,7 @@ A live card-memory game. Run `/memorypoker` in a server channel to open a lobby,
 
 1. **Lobby.** Two players press **Join as Player 1** and **Join as Player 2**. Pressing your own button again gives the spot up, and nobody can hold both. The lobby closes after 1 minute if it does not fill.
 2. **Countdown.** When both spots are taken the message counts down 5, 4, 3, 2, 1.
-3. **Board.** 16 cards are shown face up on squares A to P, to everyone at once. You have 20 seconds to memorize them.
+3. **Board.** 16 cards are shown face up on squares A to P, to everyone at once. You have 30 seconds to memorize them.
 4. **Pick.** The cards turn face down and three shared cards are revealed. You have 30 seconds to press **Place markers**, which opens a private A to P button grid. Pick two squares and press **Lock in**. The public message shows who has locked in.
 5. **Result.** Both hands are revealed in the same message. Your hand is your two cards plus the three shared cards, ranked as ordinary poker (suits never break ties). The stronger hand wins the round. **Next round** counts down again.
 

@@ -35,7 +35,7 @@ function playRound(state, aPicks, bPicks) {
 }
 
 test('constants match the design', () => {
-  assert.equal(FLASH_MS, 20000);
+  assert.equal(FLASH_MS, 30000);
   assert.equal(ANSWER_MS, 30000);
   assert.equal(WINS_NEEDED, 3);
   assert.equal(STANDARD_ROUNDS, 5);
