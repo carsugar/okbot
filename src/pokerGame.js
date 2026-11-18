@@ -16,7 +16,8 @@ const allDone = (state) => state.players.every((id) => isDone(state.per[id]));
 const closedReason = (state) => (state.status === 'finished' ? 'finished' : state.roundOpen ? null : 'round_over');
 const refuse = (state, type) => ({ state, result: { type } });
 
-export const winsNeeded = (bestOf) => Math.ceil(bestOf / 2);
+// Anything saved before the match length existed has none, and was best of 5.
+export const winsNeeded = (bestOf = STANDARD_ROUNDS) => Math.ceil(bestOf / 2);
 
 // `bestOf` is how many rounds the duel runs (1, 3 or 5); a tie after that goes to extra rounds.
 export function newGame(players, deal, now, bestOf = STANDARD_ROUNDS) {

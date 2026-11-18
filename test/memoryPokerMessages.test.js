@@ -287,3 +287,8 @@ test('the countdown score line uses the match length', () => {
   assert.match(flatTexts(countdownComponents(3, [A, B], 2, { [A]: 1, [B]: 0 }, 3)), /first to 2/);
   assert.match(flatTexts(countdownComponents(3, [A, B], 4, { [A]: 1, [B]: 1 }, 3)), /extra round/);
 });
+
+test('a result saved without a match length still shows a number', () => {
+  const { bestOf, ...old } = duelResult();
+  assert.match(texts(roundComponents([A, B], old, DEAL, ORIGIN)), /first to 3/);
+});
