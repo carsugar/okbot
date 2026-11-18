@@ -3,10 +3,10 @@ import { embedBytes, MAX_EMBED_BYTES } from './routeEmbedPage.js';
 import { routeStore } from './routeStore.js';
 import { TEMPLATES } from './templates/index.js';
 import { outputBlock } from './templates/common.js';
-import { applyModal, applyMenu, sectionModal, panelData } from './editorPanel.js';
+import { applyModal, applyMenu, editModal, panelData } from './editorPanel.js';
 
-// The template editor: a private panel with a live preview, a button per section and a
-// pop-up for each. One command opens it for any clue type. The draft lives in the route
+// The template editor: a private panel with a live preview and Edit buttons that
+// open pop-ups with every field. One command opens it for any clue type. The draft lives in the route
 // store until it is saved.
 const EPHEMERAL = 64;
 
@@ -33,7 +33,8 @@ export async function openEditor(interaction, env, origin, type, opts) {
   }
   draft = { ...draft, type, guildId: interaction.guild_id };
   await store.saveDraft(interaction.id, draft);
-  return panel(4, interaction.id, template, draft, origin, '', EPHEMERAL);
+  // The command answers with the pop-up straight away; the panel follows when it is submitted.
+  return new JsonResponse({ type: 9, data: editModal(interaction.id, template, 0, draft) });
 }
 
 async function save(interaction, env, ctx, origin, id, template, draft) {
@@ -67,7 +68,7 @@ export async function handleEditorComponent(interaction, env, ctx, origin) {
   if (!draft) return privately('This editor expired. Run the command again.');
   const template = TEMPLATES[draft.type];
 
-  if (action === 'edit') return new JsonResponse({ type: 9, data: sectionModal(id, template, part, draft) });
+  if (action === 'edit') return new JsonResponse({ type: 9, data: editModal(id, template, Number(part), draft) });
 
   if (action === 'menu') {
     const next = applyMenu(draft, template, part, interaction.data.values);
@@ -79,13 +80,15 @@ export async function handleEditorComponent(interaction, env, ctx, origin) {
 }
 
 export async function handleEditorModal(interaction, env, origin) {
-  const [, id, section] = interaction.data.custom_id.split(':');
+  const [, id, page] = interaction.data.custom_id.split(':');
   const store = routeStore(env);
   const draft = await store.getDraft(id);
   if (!draft) return privately('This editor expired. Run the command again.');
   const template = TEMPLATES[draft.type];
   const fields = interaction.data.components.flatMap((r) => r.components);
-  const next = applyModal(draft, template, section, (key) => fields.find((c) => c.custom_id === key)?.value);
+  const next = applyModal(draft, template, Number(page), (key) => fields.find((c) => c.custom_id === key)?.value);
   await store.saveDraft(id, next);
-  return panel(7, id, template, next, origin);
+  // The first submit comes from the command, so there is no panel yet: send it as a new private
+  // message. Later submits come from the panel's Edit buttons and update it.
+  return interaction.message ? panel(7, id, template, next, origin) : panel(4, id, template, next, origin, '', EPHEMERAL);
 }

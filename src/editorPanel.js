@@ -1,20 +1,26 @@
-// Pure pieces of the template editor panel: the section pop-ups and the panel message.
+// Pure pieces of the template editor panel: the edit pop-ups and the panel message.
 // Everything that differs between clue types comes from the template definition.
 import { embedBytes, MAX_EMBED_BYTES } from './routeEmbedPage.js';
 
 const IS_COMPONENTS_V2 = 1 << 15;
-const BUTTONS_PER_ROW = 5;
 
 const text = (content) => ({ type: 10, content });
 const button = (style, label, custom_id, extra = {}) => ({ type: 2, style, label, custom_id, ...extra });
 const chunk = (items, size) => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
 
-export function sectionModal(draftId, template, sectionId, draft) {
-  const section = template.sections(draft).find((s) => s.id === sectionId);
+const INPUTS_PER_MODAL = 5;
+
+// Every text field of the template, in order, split into pop-ups of five (Discord's limit).
+export const fieldPages = (template, draft) =>
+  chunk(template.sections(draft).flatMap((s) => s.inputs), INPUTS_PER_MODAL);
+
+export function editModal(draftId, template, page, draft) {
+  const pages = fieldPages(template, draft);
+  const inputs = pages[page] ?? pages[0];
   return {
-    custom_id: `le_modal:${draftId}:${sectionId}`,
-    title: `${template.label}: ${section.title}`.slice(0, 45),
-    components: section.inputs.map(([key, label, max_length, required, style]) => ({
+    custom_id: `le_modal:${draftId}:${pages[page] ? page : 0}`,
+    title: `${template.label}${pages.length > 1 ? ` (${page + 1}/${pages.length})` : ''}`.slice(0, 45),
+    components: inputs.map(([key, label, max_length, required, style]) => ({
       type: 1,
       components: [
         {
@@ -31,10 +37,9 @@ export function sectionModal(draftId, template, sectionId, draft) {
   };
 }
 
-export function applyModal(draft, template, sectionId, getField) {
-  const section = template.sections(draft).find((s) => s.id === sectionId);
+export function applyModal(draft, template, page, getField) {
   const next = { ...draft };
-  for (const [key] of section.inputs) next[key] = (getField(key) ?? '').trim();
+  for (const [key] of fieldPages(template, draft)[page] ?? []) next[key] = (getField(key) ?? '').trim();
   return next;
 }
 
@@ -56,10 +61,9 @@ export function panelData(draftId, template, draft, origin, status = '') {
     : `-# ${template.hint}`;
   const id = (action) => `le:${action}:${draftId}`;
 
-  const sectionRows = chunk(template.sections(draft), BUTTONS_PER_ROW).map((group) => ({
-    type: 1,
-    components: group.map((s) => button(2, s.title.slice(0, 80), `${id('edit')}:${s.id}`)),
-  }));
+  const pages = fieldPages(template, draft);
+  const editLabel = (i) => (pages.length === 1 ? 'Edit' : i === 0 ? 'Edit details' : i === 1 ? 'More details' : `More details ${i}`);
+  const editButtons = pages.map((_, i) => button(2, editLabel(i), `${id('edit')}:${i}`));
   const menuRows = template.menus(draft).map((m) => ({
     type: 1,
     components: [
@@ -81,9 +85,8 @@ export function panelData(draftId, template, draft, origin, status = '') {
       ...(cards[0] ? [cards[0].embed.component] : []),
       text(counter),
       ...(status ? [text(status)] : []),
-      ...sectionRows,
       ...menuRows,
-      { type: 1, components: [button(3, 'Save and get tag', id('save'), ...(!ready || tooLong ? [{ disabled: true }] : []))] },
+      { type: 1, components: [...editButtons, button(3, 'Save and get tag', id('save'), ...(!ready || tooLong ? [{ disabled: true }] : []))] },
     ],
   };
 }

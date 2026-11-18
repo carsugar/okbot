@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyModal, applyMenu, sectionModal, panelData } from '../src/editorPanel.js';
+import { applyModal, applyMenu, editModal, fieldPages, panelData } from '../src/editorPanel.js';
 import { TEMPLATES } from '../src/templates/index.js';
 import { parseLegStart } from '../src/legStartCard.js';
 import { draftToLeg } from '../src/templates/legStart.js';
@@ -35,30 +35,44 @@ test('a legacy saved leg turns back into form values', () => {
   assert.equal(d.flightTime, '2 hour');
 });
 
-test('a modal submit changes only its own section, trimmed', () => {
-  const values = { depCity: '  Cusco, Peru ', depImage: '' };
-  const next = applyModal(readyLeg(), leg, 'departure', (id) => values[id]);
-  assert.equal(next.depCity, 'Cusco, Peru');
-  assert.equal(next.depImage, '');
-  assert.equal(next.destCity, 'Santiago, Chile');
+test('a modal submit changes only its own page, trimmed', () => {
+  const first = fieldPages(leg, readyLeg())[0].map(([k]) => k);
+  const values = { [first[0]]: '  Cusco, Peru ', [first[1]]: '' };
+  const next = applyModal(readyLeg(), leg, 0, (id) => values[id]);
+  assert.equal(next[first[0]], 'Cusco, Peru');
+  assert.equal(next[first[1]], '');
+  const later = fieldPages(leg, readyLeg())[1].map(([k]) => k);
+  for (const k of later) assert.equal(next[k], readyLeg()[k]);
 });
 
-test('every template has section pop-ups inside Discord limits', () => {
+test('every template pops up all its fields, five at a time, inside Discord limits', () => {
   for (const t of Object.values(TEMPLATES)) {
     const draft = { ...t.initial({ leg: 1, tag: 'x' }), transports: ['taxi', 'bus'], custom: 'tuk tuk' };
-    assert.ok(t.sections(draft).length <= 5, t.id);
-    for (const s of t.sections(draft)) {
-      const m = sectionModal(ID, t, s.id, draft);
-      assert.equal(m.custom_id, `le_modal:${ID}:${s.id}`);
-      assert.ok(m.title.length <= 45 && m.components.length >= 1 && m.components.length <= 5, `${t.id}/${s.id}`);
+    const pages = fieldPages(t, draft);
+    assert.equal(pages.flat().length, t.sections(draft).flatMap((s) => s.inputs).length, t.id);
+    pages.forEach((_, i) => {
+      const m = editModal(ID, t, i, draft);
+      assert.equal(m.custom_id, `le_modal:${ID}:${i}`);
+      assert.ok(m.title.length <= 45 && m.components.length >= 1 && m.components.length <= 5, `${t.id}/${i}`);
       for (const { components: [c] } of m.components) assert.ok(c.label.length <= 45 && (c.value ?? '').length <= c.max_length);
-    }
+    });
   }
 });
 
-test('a section modal is pre-filled from the draft', () => {
-  const dest = sectionModal(ID, leg, 'destination', readyLeg()).components.map((r) => r.components[0].value);
-  assert.deepEqual(dest, ['Santiago, Chile', 'Cajón del Maipo', 'SCL Airport']);
+test('leg start and detour need two pop-ups, the simple types one', () => {
+  assert.equal(fieldPages(leg, readyLeg()).length, 2);
+  assert.equal(fieldPages(TEMPLATES.pitstop, TEMPLATES.pitstop.initial({ leg: 1 })).length, 1);
+});
+
+test('the pop-up is pre-filled from the draft', () => {
+  const values = editModal(ID, leg, 0, readyLeg()).components.map((r) => r.components[0].value);
+  assert.ok(values.includes('Santiago, Chile'));
+});
+
+test('the panel has one Edit button per pop-up and no per-section buttons', () => {
+  const labels = (t, d) => flat(panelData(ID, t, d, ORIGIN)).filter((c) => c.type === 2).map((c) => c.label);
+  assert.deepEqual(labels(leg, readyLeg()), ['Edit details', 'More details', 'Save and get tag']);
+  assert.deepEqual(labels(TEMPLATES.pitstop, TEMPLATES.pitstop.initial({ leg: 1 })), ['Edit', 'Save and get tag']);
 });
 
 test('a ready draft shows the card, the byte count and an enabled Save button', () => {

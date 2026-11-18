@@ -11,7 +11,7 @@ export const routeInfoBanner = (origin) => bannerImage(origin);
 // The embed's left bar takes the colour of its header image.
 const BANNER_COLORS = {
   'route-info': 0x1c5097, detour: 0xf99e02, roadblock: 0xe00d12,
-  'face-off': 0xdb5500, 'fast-forward': 0x72c742, 'u-turn': 0xecbb01,
+  'face-off': 0xdb5500, 'fast-forward': 0x72c742, 'u-turn': 0xecbb01, 'pit-stop': 0xff0000,
 };
 const DEFAULT_ACCENT = 0xf2c230;
 export const accentFor = (parts) => {
