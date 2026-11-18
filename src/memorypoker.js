@@ -59,8 +59,9 @@ export class MemoryPokerGame extends DurableObject {
   // A duel's later rounds (`fresh`) play out in a new message at the bottom of the channel, so
   // the 'open' step posts it. The first round uses the lobby message.
   async #startRound(state, token, tokens, now, fresh = false) {
+    // Pickers left from the last round (a quick Ready press can beat their removal) go now.
+    await this.#closePickers();
     await this.ctx.storage.put({ live: { token, messageId: null }, tokens });
-    await this.ctx.storage.delete('pickers');
     const start = fresh ? now + OPEN_DELAY_MS : now;
     await this.#save(state, [...(fresh ? [{ at: now + OPEN_DELAY_MS, type: 'open' }] : []), ...countdownQueue(start)]);
     // Draw this round's pictures during the countdown so they are ready when the cards flip.
