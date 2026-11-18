@@ -35,6 +35,21 @@ Rules and extras:
 - Either player can press **End game** (after a confirm) to abandon the game with no score.
 - Games can be played live or over hours, and expire after 24 hours with no activity. Game state is stored in a Durable Object (`MIND_MELD`), so `npm run deploy` creates it on first deploy.
 
+## Memory Poker
+
+A card-memory game. Run `/memorypoker opponent:@someone` in a server channel for a duel, or `/memorypoker` with no opponent to practise solo (solo stays private).
+
+1. Press **Show me my board**. Only you see a 4×4 board of cards on squares A to P, and it hides again after 20 seconds.
+2. Three shared cards are then revealed. Press **Enter your two squares** and type two letters, like `C J`.
+3. Your hand is those two cards plus the three shared cards, ranked as ordinary poker (suits never break ties). In a duel the stronger hand wins the round.
+
+Rules and extras:
+- A duel is best of 5: first to 3 round wins. Drawn rounds count for neither. If it is level after round 5, extra rounds are played until a round leaves someone ahead. Each round is a fresh deal.
+- Solo tells you whether you found the best of the 120 possible picks, and how many of them your hand beat.
+- After the board hides you have 60 seconds to answer, or you forfeit the round. The clock starts when you press **Show me my board**, and each board can only be looked at once.
+- Both players get the same board, and may pick the same squares. Players need not be online together, and games expire after 24 hours with no activity.
+- Game state is stored in a Durable Object (`MEMORY_POKER`). It needs a new migration (tag `v3`), which `npm run deploy` applies. Run `npm run register` after deploying to add the command.
+
 ## Notes
 
 - Carl-bot deprecated `!tag add`, and slash commands can't be pasted. Output uses the pasteable mention form (`<@235148962103951360> tag + ...`). Tags are still invoked with the `!` prefix.

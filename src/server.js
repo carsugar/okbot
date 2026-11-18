@@ -7,9 +7,11 @@ import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
 import { handleMindMeldCommand, handleMindMeldComponent, handleMindMeldModal } from './mindmeld.js';
+import { handleMemoryPokerCommand, handleMemoryPokerComponent, handleMemoryPokerModal } from './memorypoker.js';
 
 export { MindMeldGame } from './mindmeld.js';
 export { RouteStore } from './routeStore.js';
+export { MemoryPokerGame } from './memorypoker.js';
 
 const router = AutoRouter();
 
@@ -44,17 +46,20 @@ router.post('/', async (request, env, ctx) => {
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data.name === 'mindmeld') return handleMindMeldCommand(interaction, env);
     if (interaction.data.name === 'test_template') return handleTestTemplateCommand(interaction, env);
+    if (interaction.data.name === 'memorypoker') return handleMemoryPokerCommand(interaction, env);
     return handleCommand(interaction);
   }
 
   if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
     if (interaction.data.custom_id.startsWith('mm:')) return handleMindMeldComponent(interaction, env);
+    if (interaction.data.custom_id.startsWith('mp:')) return handleMemoryPokerComponent(interaction, env);
     return handleComponent(interaction);
   }
 
   if (interaction.type === 5) {
     if (interaction.data.custom_id.startsWith('mm_modal:')) return handleMindMeldModal(interaction, env);
     if (interaction.data.custom_id.startsWith('tmodal_legstart:')) return handleTestTemplateModal(interaction, env, ctx, new URL(request.url).origin);
+    if (interaction.data.custom_id.startsWith('mp_modal:')) return handleMemoryPokerModal(interaction, env);
     return handleModalSubmit(interaction, env, ctx);
   }
 
