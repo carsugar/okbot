@@ -104,8 +104,9 @@ export const hiddenComponents = (shared, deadlineSec, origin, status) => [
 
 // Each player's private copy of the grid: their picked squares are highlighted. `markers` is
 // the squares picked so far, like 'CJ'.
-export const pickerComponents = (gameId, round, deadlineSec, markers) => [
+export const pickerComponents = (gameId, round, deadlineSec, markers, sharedImage) => [
   text(`## 🃏 Place your markers\n-# Pick two squares, then Lock in <t:${deadlineSec}:R>` + (markers ? `\nSelected: **${[...markers].join(' + ')}**` : '')),
+  ...(sharedImage ? [text('The three shared cards:'), gallery(sharedImage)] : []),
   ...[0, 1, 2, 3].map((r) => ({
     type: 1,
     components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => button(markers.includes(letter) ? 1 : 2, letter, ppickId(gameId, round, letter))),

@@ -12,6 +12,8 @@ import {
 } from './memoryPokerMessages.js';
 import { cardPng } from './cardRoute.js';
 import { routeStore } from './routeStore.js';
+import { imageRefs, withAttachmentUrls, keepExisting } from './attachments.js';
+import { imageUrl } from './cardImage.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
@@ -273,7 +275,7 @@ export class MemoryPokerGame extends DurableObject {
     if (p.answer) return [text(`Locked in **${p.answer.map((i) => SQUARES[i]).join(' + ')}**. Waiting for your opponent.`)];
     if (p.forfeited) return [text('Time ran out for this round.')];
     const markers = p.markers.map((i) => SQUARES[i]).join('');
-    return pickerComponents(meta.gameId, state.round, seconds(p.deadline), markers);
+    return pickerComponents(meta.gameId, state.round, seconds(p.deadline), markers, imageUrl(meta.origin, 'shared', state.deal.shared));
   }
 
   #hiddenParts(meta, state) {
@@ -286,21 +288,44 @@ export class MemoryPokerGame extends DurableObject {
   }
 
   // Discord calls. Interaction tokens last 15 minutes, far longer than a round.
+  // Our card pictures go up with the message as attachments, so they are there the moment it
+  // shows. If Discord refuses that, the same message is sent again with the picture links.
   async #discord(method, token, path, components, appId, extra = {}) {
     // Games started before the live flow have no token to edit with.
     if (!token || !appId) return null;
+    const api = this.env.DISCORD_API ?? DISCORD_API;
+    const url = `${api}/webhooks/${appId}/${token}${path}`;
+    const base = { allowed_mentions: { parse: [] }, ...extra };
+    const json = () => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ components, ...base, ...(method === 'PATCH' ? { attachments: [] } : {}) }) });
     try {
-      const api = this.env.DISCORD_API ?? DISCORD_API;
-      const res = await fetch(`${api}/webhooks/${appId}/${token}${path}`, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ components, allowed_mentions: { parse: [] }, ...extra }),
-      });
+      const form = await this.#withFiles(components, base);
+      if (form) {
+        const res = await fetch(url, { method, body: form });
+        if (res.ok) return await res.json();
+      }
+      const res = await fetch(url, { method, ...json() });
       return res.ok ? await res.json() : null;
     } catch {
       // The message stays as it was; the next timed step still runs.
       return null;
     }
+  }
+
+  // The message as a multipart upload with its pictures attached, or null if it has none.
+  async #withFiles(components, base) {
+    const refs = imageRefs(components);
+    if (!refs.length) return null;
+    const store = routeStore(this.env);
+    const pngs = await Promise.all(refs.map((r) => cardPng(store, r.kind, r.cards)));
+    if (pngs.some((p) => !p)) return null;
+    const form = new FormData();
+    form.append('payload_json', JSON.stringify({
+      components: withAttachmentUrls(components, new Set(refs.map((r) => r.filename))),
+      attachments: refs.map((r, id) => ({ id, filename: r.filename })),
+      ...base,
+    }));
+    refs.forEach((r, id) => form.append(`files[${id}]`, new Blob([pngs[id]], { type: 'image/png' }), r.filename));
+    return form;
   }
 
   #patch(token, components, appId, messageId = '@original') {
@@ -332,8 +357,11 @@ const refusal = (type) => ephemeral(REFUSALS[type] ?? 'Something went wrong. Sta
 // Messages made only of components, so the card pictures can be shown.
 const componentsMessage = (components, flags = 0) =>
   new JsonResponse({ type: 4, data: { components, flags: COMPONENTS_V2 | flags, allowed_mentions: { parse: [] } } });
-const updateMessage = (components) =>
-  new JsonResponse({ type: 7, data: { components, flags: COMPONENTS_V2, allowed_mentions: { parse: [] } } });
+const updateMessage = (components, message) => {
+  // An edit keeps the pictures the message already carries.
+  const kept = keepExisting(components, message);
+  return new JsonResponse({ type: 7, data: { components: kept.components, flags: COMPONENTS_V2, allowed_mentions: { parse: [] }, ...(message ? { attachments: kept.attachments } : {}) } });
+};
 
 const gameStub = (env, gameId) => env.MEMORY_POKER.get(env.MEMORY_POKER.idFromName(gameId));
 
@@ -382,7 +410,7 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
   if (action === 'ppick' || action === 'plock') {
     const result = await stub.mark(userId, round, action === 'plock' ? '' : letter);
     // The grid is edited in place, so a press never adds a message.
-    if (result.view) return updateMessage(result.view);
+    if (result.view) return updateMessage(result.view, interaction.message);
     // A player who is already done just presses on quietly.
     if (['already_answered', 'round_over', 'late', 'finished'].includes(result.type)) return new JsonResponse({ type: 6 });
     return refusal(result.type);

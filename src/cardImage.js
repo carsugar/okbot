@@ -68,6 +68,9 @@ export const boardSvg = (board) => cardsSvg(rowsOf(board, 4));
 export const hiddenSvg = (shared) =>
   cardsSvg([...rowsOf([...SQUARES].map((back) => ({ back })), 4), { cards: shared, spaceBefore: true }]);
 
+// The three shared cards face up, shown above the square buttons.
+export const sharedSvg = (shared) => cardsSvg([{ cards: shared }]);
+
 // A player's hand: their two picked cards, a gap, then the three shared cards.
 export const handSvg = (picked, shared) => cardsSvg([{ cards: [...picked, ...shared], gapAfter: picked.length }]);
 
@@ -85,11 +88,12 @@ export function parseCards(codes) {
 
 export const imageUrl = (origin, kind, cards) => `${origin}/mp/${kind}/${cards.map(cardCode).join('')}.png`;
 
-const COUNTS = { board: 16, hidden: 3, hand: 5 };
+const COUNTS = { board: 16, hidden: 3, hand: 5, shared: 3 };
 
 export function svgFor(kind, cards) {
   if (cards.length !== COUNTS[kind] || new Set(cards.map(cardCode)).size !== cards.length) return null;
   if (kind === 'board') return boardSvg(cards);
   if (kind === 'hidden') return hiddenSvg(cards);
+  if (kind === 'shared') return sharedSvg(cards);
   return handSvg(cards.slice(0, 2), cards.slice(2));
 }
