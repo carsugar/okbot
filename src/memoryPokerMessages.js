@@ -114,7 +114,7 @@ export const pickerComponents = (gameId, round, deadlineSec, markers, sharedImag
     type: 1,
     components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => button(markers.includes(letter) ? 1 : 2, letter, ppickId(gameId, round, letter))),
   })),
-  { type: 1, components: [button(3, 'Lock in', plockId(gameId, round), markers.length < 2 ? { disabled: true } : {})] },
+  { type: 1, components: [button(3, 'Lock in', plockId(gameId, round, /\/shared\/([A-Za-z0-9]+)\.png$/.exec(sharedImage ?? '')?.[1]), markers.length < 2 ? { disabled: true } : {})] },
 ];
 
 // The picker as it will look after a press on `letter`, worked out from the message the
@@ -123,7 +123,8 @@ export const pickerComponents = (gameId, round, deadlineSec, markers, sharedImag
 export function nextPicker(message, gameId, round, letter, origin) {
   const content = (message?.components ?? []).filter((c) => c.type === 10).map((c) => c.content).join('\n');
   const deadline = /<t:(\d+):R>/.exec(content)?.[1];
-  const shared = (message?.attachments ?? []).map((a) => /^shared-([A-Za-z0-9]+)\.png$/.exec(a.filename)?.[1]).find(Boolean);
+  const lock = (message?.components ?? []).filter((c) => c.type === 1).flatMap((r) => r.components).find((b) => b.custom_id?.startsWith('mp:plock:'));
+  const shared = lock && parseId(lock.custom_id).letter;
   const square = SQUARES.indexOf(letter);
   if (!deadline || !shared || square < 0) return null;
   const selected = /Selected: \*\*(.+?)\*\*/.exec(content)?.[1].split(' + ').map((l) => SQUARES.indexOf(l)) ?? [];
@@ -194,7 +195,8 @@ export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
 export const modeId = (gameId) => `mp:mode:${gameId}:0`;
 export const startId = (gameId) => `mp:start:${gameId}:0`;
 export const ppickId = (gameId, round, letter) => `mp:ppick:${gameId}:${round}:${letter}`;
-export const plockId = (gameId, round) => `mp:plock:${gameId}:${round}`;
+// Lock in also carries the shared cards' codes, so a press can rebuild the picker from the message.
+export const plockId = (gameId, round, shared = '') => `mp:plock:${gameId}:${round}${shared ? `:${shared}` : ''}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;
 
 export function parseId(customId) {

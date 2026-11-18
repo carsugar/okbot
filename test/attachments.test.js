@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { imageRefs, withAttachmentUrls, keepExisting } from '../src/attachments.js';
+import { imageRefs, withAttachmentUrls } from '../src/attachments.js';
 import { parseCards, svgFor } from '../src/cardImage.js';
 import { pickerComponents } from '../src/memoryPokerMessages.js';
 
@@ -28,16 +28,6 @@ test('pictures that are attached are referenced by attachment://, others are lef
   assert.equal(out[3].items[0].media.url, 'attachment://hand-AS2H3D4C5S.png');
   assert.equal(out[4].items[0].media.url, 'https://other.dev/header.png');
   assert.equal(parts[2].items[0].media.url.startsWith('https'), true);
-});
-
-test('an edit keeps the pictures the message already has', () => {
-  const view = [gallery(`${O}/mp/shared/KSKDKC.png`)];
-  const message = { attachments: [{ id: '55', filename: 'shared-KSKDKC.png' }, { id: '56', filename: 'old.png' }] };
-  const kept = keepExisting(view, message);
-  assert.deepEqual(kept.attachments, [{ id: '55' }]);
-  assert.equal(kept.components[0].items[0].media.url, 'attachment://shared-KSKDKC.png');
-  assert.deepEqual(keepExisting(view, { attachments: [] }).attachments, []);
-  assert.equal(keepExisting(view, undefined).components[0].items[0].media.url, view[0].items[0].media.url);
 });
 
 test('the shared cards picture exists for exactly three cards', () => {

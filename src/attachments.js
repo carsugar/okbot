@@ -29,13 +29,3 @@ export const withAttachmentUrls = (components, filenames) =>
     const name = isGallery(c) && filenameOf(urlOf(c));
     return name && filenames.has(name) ? { ...c, items: [{ ...c.items[0], media: { ...c.items[0].media, url: `attachment://${name}` } }] } : c;
   });
-
-// An edit made in an interaction response: the pictures the message already carries stay.
-export function keepExisting(components, message) {
-  const have = new Map((message?.attachments ?? []).map((a) => [a.filename, a.id]));
-  const names = new Set(imageRefs(components).map((r) => r.filename).filter((n) => have.has(n)));
-  return {
-    components: withAttachmentUrls(components, names),
-    attachments: [...names].map((n) => ({ id: have.get(n) })),
-  };
-}

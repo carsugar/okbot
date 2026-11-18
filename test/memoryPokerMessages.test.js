@@ -301,7 +301,6 @@ test('a result saved without a match length still shows a number', () => {
 
 const pressed = (markers) => ({
   components: pickerComponents('123', 2, 1_700_000_060, markers, 'https://x.dev/mp/shared/KSKDKC.png'),
-  attachments: [{ id: '9', filename: 'shared-KSKDKC.png' }],
 });
 const selectedOf = (parts) => pickerButtons(parts).filter((b) => b.style === 1).map((b) => b.label);
 

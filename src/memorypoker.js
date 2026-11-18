@@ -12,7 +12,7 @@ import {
 } from './memoryPokerMessages.js';
 import { cardPng } from './cardRoute.js';
 import { routeStore } from './routeStore.js';
-import { imageRefs, withAttachmentUrls, keepExisting } from './attachments.js';
+import { imageRefs, withAttachmentUrls } from './attachments.js';
 import { imageUrl } from './cardImage.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -363,11 +363,10 @@ const refusal = (type) => ephemeral(REFUSALS[type] ?? 'Something went wrong. Sta
 // Messages made only of components, so the card pictures can be shown.
 const componentsMessage = (components, flags = 0) =>
   new JsonResponse({ type: 4, data: { components, flags: COMPONENTS_V2 | flags, allowed_mentions: { parse: [] } } });
-const updateMessage = (components, message) => {
-  // An edit keeps the pictures the message already carries.
-  const kept = keepExisting(components, message);
-  return new JsonResponse({ type: 7, data: { components: kept.components, flags: COMPONENTS_V2, allowed_mentions: { parse: [] }, ...(message ? { attachments: kept.attachments } : {}) } });
-};
+// Edits made in a response use picture links, which Discord keeps cached between edits. An
+// attached picture would get a new address on every edit and reload each time.
+const updateMessage = (components) =>
+  new JsonResponse({ type: 7, data: { components, flags: COMPONENTS_V2, allowed_mentions: { parse: [] }, attachments: [] } });
 
 const gameStub = (env, gameId) => env.MEMORY_POKER.get(env.MEMORY_POKER.idFromName(gameId));
 
@@ -419,14 +418,14 @@ export async function handleMemoryPokerComponent(interaction, env, ctx, origin) 
     const quick = nextPicker(interaction.message, gameId, round, letter, origin);
     if (quick) {
       ctx.waitUntil(stub.mark(userId, round, letter).catch(() => {}));
-      return updateMessage(quick, interaction.message);
+      return updateMessage(quick);
     }
   }
 
   if (action === 'ppick' || action === 'plock') {
     const result = await stub.mark(userId, round, action === 'plock' ? '' : letter);
     // The grid is edited in place, so a press never adds a message.
-    if (result.view) return updateMessage(result.view, interaction.message);
+    if (result.view) return updateMessage(result.view);
     // The round just ended: the picker has been removed, so there is nothing to show.
     if (result.type === 'resolved') return new JsonResponse({ type: 6 });
     // A player who is already done just presses on quietly.
