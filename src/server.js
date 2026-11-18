@@ -1,12 +1,16 @@
 import { AutoRouter } from 'itty-router';
 import { sampleRouteInfoEmbed, embedPageHtml } from './routeEmbedPage.js';
 import { ROUTE_INFO_HEADER_IMAGE } from './tagTemplates.js';
+import { handleTestTemplateCommand, handleTestTemplateModal } from './testTemplate.js';
+import { routeStore } from './routeStore.js';
+import { legStartEmbed } from './legStartCard.js';
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
 import { handleMindMeldCommand, handleMindMeldComponent, handleMindMeldModal } from './mindmeld.js';
 
 export { MindMeldGame } from './mindmeld.js';
+export { RouteStore } from './routeStore.js';
 
 const router = AutoRouter();
 
@@ -18,6 +22,15 @@ router.get('/route/preview', () =>
   new Response(embedPageHtml(sampleRouteInfoEmbed(ROUTE_INFO_HEADER_IMAGE), { title: 'Route Info: Leg 3', description: 'Sample Route Info card' }), {
     headers: { 'Content-Type': 'text/html;charset=UTF-8' },
   }));
+
+router.get('/route/:slug', async (request, env) => {
+  const data = await routeStore(env).get(request.params.slug);
+  if (!data) return new Response('Not Found.', { status: 404 });
+  const title = `Route Info: Leg ${data.leg} Start`;
+  return new Response(embedPageHtml(legStartEmbed(data, ROUTE_INFO_HEADER_IMAGE), { title, description: `${data.departure} to ${data.destination}` }), {
+    headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+  });
+});
 
 router.post('/', async (request, env, ctx) => {
   const { isValid, interaction } = await verifyDiscordRequest(request, env);
@@ -31,6 +44,7 @@ router.post('/', async (request, env, ctx) => {
 
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data.name === 'mindmeld') return handleMindMeldCommand(interaction, env);
+    if (interaction.data.name === 'test_template') return handleTestTemplateCommand(interaction);
     return handleCommand(interaction);
   }
 
@@ -41,6 +55,7 @@ router.post('/', async (request, env, ctx) => {
 
   if (interaction.type === 5) {
     if (interaction.data.custom_id.startsWith('mm_modal:')) return handleMindMeldModal(interaction, env);
+    if (interaction.data.custom_id.startsWith('tmodal_legstart:')) return handleTestTemplateModal(interaction, env, ctx, new URL(request.url).origin);
     return handleModalSubmit(interaction, env, ctx);
   }
 
