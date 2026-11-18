@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { imageRefs, withAttachmentUrls } from '../src/attachments.js';
 import { parseCards, svgFor } from '../src/cardImage.js';
-import { pickerComponents } from '../src/memoryPokerMessages.js';
 
 const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });
 const O = 'https://x.dev';
@@ -33,11 +32,4 @@ test('pictures that are attached are referenced by attachment://, others are lef
 test('the shared cards picture exists for exactly three cards', () => {
   assert.ok(svgFor('shared', parseCards('KSKDKC')));
   assert.equal(svgFor('shared', parseCards('KSKD')), null);
-});
-
-test('the picker shows the three shared cards above the square buttons', () => {
-  const parts2 = pickerComponents('1', 1, 1_700_000_000, '', `${O}/mp/shared/KSKDKC.png`);
-  const g = parts2.findIndex((c) => c.type === 12);
-  const firstRow = parts2.findIndex((c) => c.type === 1);
-  assert.ok(g > 0 && g < firstRow);
 });

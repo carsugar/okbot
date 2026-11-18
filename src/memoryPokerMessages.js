@@ -111,31 +111,32 @@ export const hiddenComponents = (shared, deadlineSec, origin, status) => [
   text(`-# Your private picker has opened below. Place two markers, then Lock in <t:${deadlineSec}:R>\n${status}`),
 ];
 
+// Sent privately to each player just above their picker, as its own message so editing the
+// picker never touches the picture.
+export const sharedCardsComponents = (origin, shared) => [text('## 🃏 The three shared cards'), gallery(imageUrl(origin, 'shared', shared))];
+
 // Each player's private copy of the grid: their picked squares are highlighted. `markers` is
 // the squares picked so far, like 'CJ'.
-export const pickerComponents = (gameId, round, deadlineSec, markers, sharedImage) => [
+export const pickerComponents = (gameId, round, deadlineSec, markers) => [
   text(`## 🃏 Place your markers\n-# Pick two squares, then Lock in <t:${deadlineSec}:R>` + (markers ? `\nSelected: **${[...markers].join(' + ')}**` : '')),
-  ...(sharedImage ? [text('The three shared cards:'), gallery(sharedImage)] : []),
   ...[0, 1, 2, 3].map((r) => ({
     type: 1,
     components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => button(markers.includes(letter) ? 1 : 2, letter, ppickId(gameId, round, letter))),
   })),
-  { type: 1, components: [button(3, 'Lock in', plockId(gameId, round, /\/shared\/([A-Za-z0-9]+)\.png$/.exec(sharedImage ?? '')?.[1]), markers.length < 2 ? { disabled: true } : {})] },
+  { type: 1, components: [button(3, 'Lock in', plockId(gameId, round), markers.length < 2 ? { disabled: true } : {})] },
 ];
 
 // The picker as it will look after a press on `letter`, worked out from the message the
 // player pressed on, so the answer can go back at once without waiting for the game's storage.
 // Null if that message is not a picker we can read.
-export function nextPicker(message, gameId, round, letter, origin) {
+export function nextPicker(message, gameId, round, letter) {
   const content = (message?.components ?? []).filter((c) => c.type === 10).map((c) => c.content).join('\n');
   const deadline = /<t:(\d+):R>/.exec(content)?.[1];
-  const lock = (message?.components ?? []).filter((c) => c.type === 1).flatMap((r) => r.components).find((b) => b.custom_id?.startsWith('mp:plock:'));
-  const shared = lock && parseId(lock.custom_id).letter;
   const square = SQUARES.indexOf(letter);
-  if (!deadline || !shared || square < 0) return null;
+  if (!deadline || square < 0) return null;
   const selected = /Selected: \*\*(.+?)\*\*/.exec(content)?.[1].split(' + ').map((l) => SQUARES.indexOf(l)) ?? [];
   const markers = toggleMarker(selected, square).map((i) => SQUARES[i]).join('');
-  return pickerComponents(gameId, round, Number(deadline), markers, `${origin}/mp/shared/${shared}.png`);
+  return pickerComponents(gameId, round, Number(deadline), markers);
 }
 
 // A hand is the two picked squares followed by the three shared cards.
@@ -201,8 +202,7 @@ export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
 export const modeId = (gameId) => `mp:mode:${gameId}:0`;
 export const startId = (gameId) => `mp:start:${gameId}:0`;
 export const ppickId = (gameId, round, letter) => `mp:ppick:${gameId}:${round}:${letter}`;
-// Lock in also carries the shared cards' codes, so a press can rebuild the picker from the message.
-export const plockId = (gameId, round, shared = '') => `mp:plock:${gameId}:${round}${shared ? `:${shared}` : ''}`;
+export const plockId = (gameId, round) => `mp:plock:${gameId}:${round}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;
 
 export function parseId(customId) {

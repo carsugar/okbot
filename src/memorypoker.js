@@ -7,13 +7,12 @@ import {
 } from './pokerGame.js';
 import { newLobby, claim, setBestOf, LOBBY_MS } from './pokerLobby.js';
 import {
-  nextPicker, lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
+  nextPicker, sharedCardsComponents, lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, pickerComponents, parseId,
 } from './memoryPokerMessages.js';
 import { cardPng } from './cardRoute.js';
 import { routeStore } from './routeStore.js';
 import { imageRefs, withAttachmentUrls } from './attachments.js';
-import { imageUrl } from './cardImage.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
@@ -258,11 +257,13 @@ export class MemoryPokerGame extends DurableObject {
   async #openPickers(meta, state) {
     const tokens = (await this.ctx.storage.get('tokens')) ?? {};
     const pickers = {};
-    for (const id of state.players) {
-      if (!tokens[id]) continue;
+    // Each player gets the shared cards as their own message, then the picker right below it.
+    await Promise.all(state.players.map(async (id) => {
+      if (!tokens[id]) return;
+      const cards = await this.#post(tokens[id], sharedCardsComponents(meta.origin, state.deal.shared), meta.appId);
       const message = await this.#post(tokens[id], this.#pickerView(meta, state, id), meta.appId);
-      if (message?.id) pickers[id] = { messageId: message.id, token: tokens[id] };
-    }
+      if (message?.id) pickers[id] = { messageId: message.id, cardsId: cards?.id, token: tokens[id] };
+    }));
     await this.ctx.storage.put('pickers', pickers);
   }
 
@@ -272,8 +273,8 @@ export class MemoryPokerGame extends DurableObject {
     const { meta } = await this.#load();
     const pickers = (await this.ctx.storage.get('pickers')) ?? {};
     const api = this.env.DISCORD_API ?? DISCORD_API;
-    await Promise.all(Object.values(pickers).map((p) =>
-      fetch(`${api}/webhooks/${meta.appId}/${p.token}/messages/${p.messageId}`, { method: 'DELETE' }).catch(() => {})));
+    const remove = (p, id) => id && fetch(`${api}/webhooks/${meta.appId}/${p.token}/messages/${id}`, { method: 'DELETE' }).catch(() => {});
+    await Promise.all(Object.values(pickers).flatMap((p) => [remove(p, p.messageId), remove(p, p.cardsId)]));
     await this.ctx.storage.delete('pickers');
   }
 
@@ -283,7 +284,7 @@ export class MemoryPokerGame extends DurableObject {
     if (p.answer) return [text(`Locked in **${p.answer.map((i) => SQUARES[i]).join(' + ')}**. Waiting for your opponent.`)];
     if (p.forfeited) return [text('Time ran out for this round.')];
     const markers = p.markers.map((i) => SQUARES[i]).join('');
-    return pickerComponents(meta.gameId, state.round, seconds(p.deadline), markers, imageUrl(meta.origin, 'shared', state.deal.shared));
+    return pickerComponents(meta.gameId, state.round, seconds(p.deadline), markers);
   }
 
   #hiddenParts(meta, state) {
@@ -425,7 +426,7 @@ export async function handleMemoryPokerComponent(interaction, env, ctx, origin) 
   if (action === 'ppick') {
     // Answer straight from the picker the player pressed on, so the button does not wait for
     // storage; the game records the press in the background.
-    const quick = nextPicker(interaction.message, gameId, round, letter, origin);
+    const quick = nextPicker(interaction.message, gameId, round, letter);
     if (quick) {
       ctx.waitUntil(stub.mark(userId, round, letter).catch(() => {}));
       return updateMessage(quick);

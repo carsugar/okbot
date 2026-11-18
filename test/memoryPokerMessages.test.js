@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cardLabel, lobbyComponents, soloStartComponents, startId, modeId, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
-  roundComponents, readyStatus, pickerComponents, nextPicker, joinId, ppickId, plockId, nextId, parseId,
+  roundComponents, readyStatus, pickerComponents, nextPicker, sharedCardsComponents, joinId, ppickId, plockId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
 const [A, B] = ['100000000000000001', '100000000000000002'];
@@ -300,24 +300,23 @@ test('a result saved without a match length still shows a number', () => {
 });
 
 const pressed = (markers) => ({
-  components: pickerComponents('123', 2, 1_700_000_060, markers, 'https://x.dev/mp/shared/KSKDKC.png'),
+  components: pickerComponents('123', 2, 1_700_000_060, markers),
 });
 const selectedOf = (parts) => pickerButtons(parts).filter((b) => b.style === 1).map((b) => b.label);
 
 test('a press is worked out from the picker message itself', () => {
-  assert.deepEqual(selectedOf(nextPicker(pressed(''), '123', 2, 'C', 'https://x.dev')), ['C']);
+  assert.deepEqual(selectedOf(nextPicker(pressed(''), '123', 2, 'C')), ['C']);
   assert.deepEqual(selectedOf(nextPicker(pressed('C'), '123', 2, 'J', 'https://x.dev')), ['C', 'J']);
   assert.deepEqual(selectedOf(nextPicker(pressed('CJ'), '123', 2, 'C', 'https://x.dev')), ['J']);
   const third = nextPicker(pressed('CJ'), '123', 2, 'A', 'https://x.dev');
   assert.deepEqual(selectedOf(third), ['A', 'J']);
   assert.match(texts(third), /Selected: \*\*J \+ A\*\*/);
   assert.ok(texts(third).includes('<t:1700000060:R>'));
-  assert.equal(third.find((c) => c.type === 12).items[0].media.url, 'https://x.dev/mp/shared/KSKDKC.png');
 });
 
 test('a message that is not a picker gives no guess', () => {
-  assert.equal(nextPicker(undefined, '123', 2, 'C', 'https://x.dev'), null);
-  assert.equal(nextPicker({ components: [], attachments: [] }, '123', 2, 'C', 'https://x.dev'), null);
+  assert.equal(nextPicker(undefined, '123', 2, 'C'), null);
+  assert.equal(nextPicker({ components: [], attachments: [] }, '123', 2, 'C'), null);
 });
 
 
@@ -329,4 +328,10 @@ test('a taken spot shows the avatar beside the name, with a Leave button under i
   const leave = parts[at + 1].components[0];
   assert.deepEqual([leave.label, leave.disabled, leave.custom_id], ['Leave', undefined, joinId(GAME, 0)]);
   assert.deepEqual(allButtons(parts).map((b) => b.label), ['Leave', 'Join']);
+});
+
+test('the shared cards go in their own message, and the picker has no picture to reload', () => {
+  const cards = sharedCardsComponents('https://x.dev', [{ rank: 13, suit: 'S' }, { rank: 13, suit: 'D' }, { rank: 13, suit: 'C' }]);
+  assert.equal(cards.find((c) => c.type === 12).items[0].media.url, 'https://x.dev/mp/shared/KSKDKC.png');
+  assert.equal(pickerComponents('1', 1, 1_700_000_000, 'C').some((c) => c.type === 12), false);
 });
