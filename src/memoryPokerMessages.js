@@ -19,10 +19,7 @@ const button = (style, label, custom_id, extra = {}) => ({ type: 2, style, label
 const spotLabel = (id) => (id ? mention(id) : 'open');
 
 // The title, the one-line idea and the four steps. Solo reads step 4 for one player.
-const matchLine = (bestOf) =>
-  bestOf === 1 ? 'Single round: the stronger hand wins the duel.' : `Best of ${bestOf}: the first to win ${winsNeeded(bestOf)} rounds takes the duel.`;
-
-const howToText = (solo, bestOf = STANDARD_ROUNDS) => {
+const howToText = (solo) => {
   const flash = FLASH_MS / 1000;
   const answer = ANSWER_MS / 1000;
   return [
@@ -37,20 +34,19 @@ const howToText = (solo, bestOf = STANDARD_ROUNDS) => {
     solo
       ? '4. Your hand is revealed, and you find out whether it was the best one on the board.'
       : '4. Both hands are revealed. The stronger poker hand wins the round.',
-    ...(solo ? [] : ['', `-# ${matchLine(bestOf)}`]),
   ].join('\n');
 };
 
 const MATCH_LABEL = { 1: 'Single round', 3: 'Best of 3', 5: 'Best of 5' };
 
+const gap = { type: 14, divider: false, spacing: 2 };
+
+// The instructions, who holds each spot, the match length, the join buttons, and last the
+// time left. Gaps keep the dropdown and the buttons apart.
 export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
   return [
-    text(howToText(false, bestOf)),
-    text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}\n-# Lobby closes <t:${closesAtSec}:R>. The countdown starts when both spots are taken.`),
-    {
-      type: 1,
-      components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],
-    },
+    text(howToText(false)),
+    text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}`),
     {
       type: 1,
       components: [{
@@ -60,6 +56,13 @@ export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
         options: Object.entries(MATCH_LABEL).map(([value, label]) => ({ label, value, default: Number(value) === bestOf })),
       }],
     },
+    gap,
+    {
+      type: 1,
+      components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],
+    },
+    gap,
+    text(`-# Lobby closes <t:${closesAtSec}:R>. The countdown starts when both spots are taken.`),
   ];
 }
 

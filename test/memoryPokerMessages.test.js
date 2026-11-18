@@ -35,7 +35,7 @@ test('the lobby carries the instructions with the exact timings', () => {
   assert.match(t, /2\. The cards turn face down and three shared cards are revealed\./);
   assert.match(t, /3\. You have 30 seconds to place your two markers on the squares you think make the best hand\./);
   assert.match(t, /4\. Both hands are revealed\. The stronger poker hand wins the round\./);
-  assert.match(t, /Single round/);
+  assert.doesNotMatch(t, /first to win/);
   assert.ok(t.includes('<t:1700000060:R>'));
 });
 
@@ -276,11 +276,17 @@ test('the lobby has a match length selector that defaults to a single round', ()
   assert.deepEqual(menu.options.filter((o) => o.default).map((o) => o.value), ['1']);
 });
 
-test('the lobby selector and rules text follow the chosen match length', () => {
+test('the lobby selector follows the chosen match length, with no rules sentence about it', () => {
   const parts = lobbyComponents(GAME, [null, null], 1, 3);
   assert.deepEqual(rowButtons(parts).find((c) => c.type === 3).options.filter((o) => o.default).map((o) => o.value), ['3']);
-  assert.match(flatTexts(parts), /Best of 3: the first to win 2 rounds/);
-  assert.match(flatTexts(lobbyComponents(GAME, [null, null], 1, 5)), /Best of 5: the first to win 3 rounds/);
+  assert.doesNotMatch(flatTexts(parts), /first to win/);
+});
+
+test('the lobby order is dropdown, then join buttons, then the closing time last, with gaps between', () => {
+  const kinds = lobbyComponents(GAME, [null, null], 1_700_000_060).map((c) => (c.type === 1 ? `row:${c.components[0].type}` : c.type));
+  assert.deepEqual(kinds, [10, 10, 'row:3', 14, 'row:2', 14, 10]);
+  const last = lobbyComponents(GAME, [null, null], 1_700_000_060).at(-1);
+  assert.match(last.content, /Lobby closes <t:1700000060:R>/);
 });
 
 test('the countdown score line uses the match length', () => {
