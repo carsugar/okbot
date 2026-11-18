@@ -5,6 +5,11 @@ export const TAG_TEMPLATE_COMMAND = {
   options: [
     {
       type: 1,
+      name: 'preview_routeinfo',
+      description: 'Preview a Route Info built with Components V2 (test only).',
+    },
+    {
+      type: 1,
       name: 'routeinfo_legstart',
       description: 'Generate a Route Info: Leg Start tag.',
       options: [{ type: 4, name: 'leg', description: 'Leg number', required: true }],
