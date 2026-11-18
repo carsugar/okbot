@@ -88,6 +88,17 @@ export const markerRows = (gameId, round) => [
   { type: 1, components: [button(3, 'Lock in', lockInId(gameId, round))] },
 ];
 
+// Each player's private copy of the grid: their picked squares are highlighted. `markers` is
+// the squares picked so far, like 'CJ'.
+export const pickerComponents = (gameId, round, deadlineSec, markers) => [
+  text(`## 🃏 Place your markers\n-# Pick two squares, then Lock in <t:${deadlineSec}:R>` + (markers ? `\nSelected: **${[...markers].join(' + ')}**` : '')),
+  ...[0, 1, 2, 3].map((r) => ({
+    type: 1,
+    components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => button(markers.includes(letter) ? 1 : 2, letter, ppickId(gameId, round, letter))),
+  })),
+  { type: 1, components: [button(3, 'Lock in', plockId(gameId, round), markers.length < 2 ? { disabled: true } : {})] },
+];
+
 // A hand is the two picked squares followed by the three shared cards.
 const handImage = (origin, deal, picks) => gallery(imageUrl(origin, 'hand', [...picks.map((i) => deal.board[i]), ...deal.shared]));
 
@@ -131,6 +142,8 @@ export function roundComponents(players, result, deal, origin) {
 // A join button carries its spot (0 or 1) where other ids carry the round.
 export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
 export const pickId = (gameId, round, letter) => `mp:pick:${gameId}:${round}:${letter}`;
+export const ppickId = (gameId, round, letter) => `mp:ppick:${gameId}:${round}:${letter}`;
+export const plockId = (gameId, round) => `mp:plock:${gameId}:${round}`;
 export const lockInId = (gameId, round) => `mp:lockin:${gameId}:${round}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;
 

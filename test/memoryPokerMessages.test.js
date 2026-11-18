@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cardLabel, lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
-  roundComponents, markerRows, joinId, pickId, lockInId, nextId, parseId,
+  roundComponents, markerRows, pickerComponents, joinId, pickId, lockInId, ppickId, plockId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
 const [A, B] = ['100000000000000001', '100000000000000002'];
@@ -208,6 +208,30 @@ test('the marker buttons are the sixteen squares in four rows of four, then Lock
 
 test('the Lock in id round trips', () => {
   assert.deepEqual(parseId(lockInId('123', 4)), { action: 'lockin', gameId: '123', round: 4, letter: '' });
+  assert.deepEqual(parseId(ppickId('123', 4, 'K')), { action: 'ppick', gameId: '123', round: 4, letter: 'K' });
+  assert.deepEqual(parseId(plockId('123', 4)), { action: 'plock', gameId: '123', round: 4, letter: '' });
+});
+
+const pickerButtons = (parts) => parts.filter((c) => c.type === 1).flatMap((r) => r.components);
+
+test('the private picker is the same grid, with the picked squares highlighted and Lock in waiting for two', () => {
+  const none = pickerComponents('123', 2, 1_700_000_060, '');
+  assert.equal(pickerButtons(none).length, 17);
+  assert.ok(pickerButtons(none).slice(0, 16).every((b) => b.style === 2));
+  assert.equal(pickerButtons(none).at(-1).disabled, true);
+  assert.doesNotMatch(texts(none), /Selected/);
+
+  const one = pickerComponents('123', 2, 1_700_000_060, 'C');
+  assert.equal(pickerButtons(one).find((b) => b.label === 'C').style, 1);
+  assert.equal(pickerButtons(one).find((b) => b.label === 'D').style, 2);
+  assert.equal(pickerButtons(one).at(-1).disabled, true);
+
+  const two = pickerComponents('123', 2, 1_700_000_060, 'CJ');
+  assert.equal(pickerButtons(two).filter((b) => b.style === 1).length, 2);
+  assert.equal(pickerButtons(two).at(-1).disabled, undefined);
+  assert.equal(pickerButtons(two).at(-1).custom_id, plockId('123', 2));
+  assert.match(texts(two), /Selected: \*\*C \+ J\*\*/);
+  assert.ok(texts(two).includes('<t:1700000060:R>'));
 });
 
 test('memorypoker command is guild-only and solo is an optional yes/no', async () => {
