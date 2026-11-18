@@ -1,9 +1,8 @@
 import { AutoRouter } from 'itty-router';
 import { sampleRouteInfoEmbed, embedPageHtml } from './routeEmbedPage.js';
-import { ROUTE_INFO_HEADER_IMAGE } from './tagTemplates.js';
 import { handleTestTemplateCommand, handleTestTemplateModal } from './testTemplate.js';
 import { routeStore } from './routeStore.js';
-import { legStartEmbed } from './legStartCard.js';
+import { legStartEmbed, routeInfoBanner } from './legStartCard.js';
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
@@ -18,8 +17,8 @@ router.get('/', (request, env) => {
   return new Response(`okbot | ${env.DISCORD_APPLICATION_ID}`);
 });
 
-router.get('/route/preview', () =>
-  new Response(embedPageHtml(sampleRouteInfoEmbed(ROUTE_INFO_HEADER_IMAGE), { title: 'Route Info: Leg 3', description: 'Sample Route Info card' }), {
+router.get('/route/preview', (request) =>
+  new Response(embedPageHtml(sampleRouteInfoEmbed(routeInfoBanner(new URL(request.url).origin)), { title: 'Route Info: Leg 3', description: 'Sample Route Info card' }), {
     headers: { 'Content-Type': 'text/html;charset=UTF-8' },
   }));
 
@@ -27,7 +26,7 @@ router.get('/route/:slug', async (request, env) => {
   const data = await routeStore(env).get(request.params.slug);
   if (!data) return new Response('Not Found.', { status: 404 });
   const title = `Route Info: Leg ${data.leg} Start`;
-  return new Response(embedPageHtml(legStartEmbed(data, ROUTE_INFO_HEADER_IMAGE), { title, description: `${data.departure} to ${data.destination}` }), {
+  return new Response(embedPageHtml(legStartEmbed(data, routeInfoBanner(new URL(request.url).origin)), { title, description: `${data.departure} to ${data.destination}` }), {
     headers: { 'Content-Type': 'text/html;charset=UTF-8' },
   });
 });

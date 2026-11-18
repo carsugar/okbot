@@ -1,8 +1,7 @@
 import { JsonResponse, sendFollowup } from './utils.js';
-import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder } from './legStartCard.js';
+import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder, routeInfoBanner } from './legStartCard.js';
 import { embedBytes, MAX_EMBED_BYTES } from './routeEmbedPage.js';
 import { routeStore } from './routeStore.js';
-import { ROUTE_INFO_HEADER_IMAGE } from './tagTemplates.js';
 
 // Staging versions of the template commands. They share nothing with /tag_template, and
 // their tags are named test-leg-N so they never collide with real ones.
@@ -47,7 +46,7 @@ export async function handleTestTemplateModal(interaction, env, ctx, origin) {
     flightTime: getField(interaction, 'flight_time'),
   });
 
-  const bytes = embedBytes(legStartEmbed(data, ROUTE_INFO_HEADER_IMAGE));
+  const bytes = embedBytes(legStartEmbed(data, routeInfoBanner(origin)));
   if (bytes > MAX_EMBED_BYTES) {
     return privately(`That card is too long for a link preview (${bytes} of ${MAX_EMBED_BYTES} bytes). Shorten the fields and try again.`);
   }

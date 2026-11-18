@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder, newSlug, INVISIBLE } from '../src/legStartCard.js';
+import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder, newSlug, routeInfoBanner, INVISIBLE } from '../src/legStartCard.js';
 import { embedBytes, MAX_EMBED_BYTES } from '../src/routeEmbedPage.js';
 
 const IMAGE = 'https://example.com/header.webp';
@@ -105,4 +105,8 @@ test('the departure image shows in its own gallery right under the make-your-way
 test('no departure image means no second gallery', () => {
   const parts = legStartEmbed(parseLegStart({ ...fields, departure: 'Cusco' }), IMAGE).component.components;
   assert.equal(parts.filter((c) => c.type === 12).length, 1);
+});
+
+test('the banner is the Route Info image served by the Worker itself', () => {
+  assert.equal(routeInfoBanner('https://x.dev'), 'https://x.dev/img/route-info.webp');
 });
