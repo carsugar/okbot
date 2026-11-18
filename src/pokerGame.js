@@ -16,8 +16,12 @@ const allDone = (state) => state.players.every((id) => isDone(state.per[id]));
 const closedReason = (state) => (state.status === 'finished' ? 'finished' : state.roundOpen ? null : 'round_over');
 const refuse = (state, type) => ({ state, result: { type } });
 
-export function newGame(players, deal, now) {
+export const winsNeeded = (bestOf) => Math.ceil(bestOf / 2);
+
+// `bestOf` is how many rounds the duel runs (1, 3 or 5); a tie after that goes to extra rounds.
+export function newGame(players, deal, now, bestOf = STANDARD_ROUNDS) {
   return {
+    bestOf,
     mode: players.length === 1 ? 'solo' : 'duel',
     players,
     round: 1,
@@ -93,13 +97,14 @@ function resolveRound(state, now) {
     outcome = cmp === 0 ? 'draw' : 'win';
     winner = cmp > 0 ? a : cmp < 0 ? b : null;
     if (winner) wins[winner] += 1;
-    if (wins[a] >= WINS_NEEDED) matchWinner = a;
-    else if (wins[b] >= WINS_NEEDED) matchWinner = b;
-    else if (state.round >= STANDARD_ROUNDS && wins[a] !== wins[b]) matchWinner = wins[a] > wins[b] ? a : b;
+    const need = winsNeeded(state.bestOf);
+    if (wins[a] >= need) matchWinner = a;
+    else if (wins[b] >= need) matchWinner = b;
+    else if (state.round >= state.bestOf && wins[a] !== wins[b]) matchWinner = wins[a] > wins[b] ? a : b;
   }
 
   const roundResult = {
-    round: state.round, outcome, winner, hands, picks, forfeited, wins,
+    round: state.round, bestOf: state.bestOf, outcome, winner, hands, picks, forfeited, wins,
     finished: matchWinner !== null, matchWinner, analysis,
   };
   return {

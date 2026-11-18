@@ -1,6 +1,6 @@
 // Message text and custom ids for Memory Poker. Plain Discord markdown, kept under 2000 characters.
 import { SQUARES, handName } from './pokerRules.js';
-import { WINS_NEEDED, STANDARD_ROUNDS, FLASH_MS, ANSWER_MS } from './pokerGame.js';
+import { STANDARD_ROUNDS, FLASH_MS, ANSWER_MS, winsNeeded } from './pokerGame.js';
 import { imageUrl } from './cardImage.js';
 
 // Discord trims blank lines after a header and at the end of a message, so those gaps use this.
@@ -19,7 +19,10 @@ const button = (style, label, custom_id, extra = {}) => ({ type: 2, style, label
 const spotLabel = (id) => (id ? mention(id) : 'open');
 
 // The title, the one-line idea and the four steps. Solo reads step 4 for one player.
-const howToText = (solo) => {
+const matchLine = (bestOf) =>
+  bestOf === 1 ? 'Single round: the stronger hand wins the duel.' : `Best of ${bestOf}: the first to win ${winsNeeded(bestOf)} rounds takes the duel.`;
+
+const howToText = (solo, bestOf = STANDARD_ROUNDS) => {
   const flash = FLASH_MS / 1000;
   const answer = ANSWER_MS / 1000;
   return [
@@ -34,17 +37,28 @@ const howToText = (solo) => {
     solo
       ? '4. Your hand is revealed, and you find out whether it was the best one on the board.'
       : '4. Both hands are revealed. The stronger poker hand wins the round.',
-    ...(solo ? [] : ['', `-# Best of ${STANDARD_ROUNDS}: the first to win ${WINS_NEEDED} rounds takes the duel.`]),
+    ...(solo ? [] : ['', `-# ${matchLine(bestOf)}`]),
   ].join('\n');
 };
 
-export function lobbyComponents(gameId, spots, closesAtSec) {
+const MATCH_LABEL = { 1: 'Single round', 3: 'Best of 3', 5: 'Best of 5' };
+
+export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
   return [
-    text(howToText(false)),
+    text(howToText(false, bestOf)),
     text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}\n-# Lobby closes <t:${closesAtSec}:R>. The countdown starts when both spots are taken.`),
     {
       type: 1,
       components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],
+    },
+    {
+      type: 1,
+      components: [{
+        type: 3,
+        custom_id: modeId(gameId),
+        placeholder: 'Match length',
+        options: Object.entries(MATCH_LABEL).map(([value, label]) => ({ label, value, default: Number(value) === bestOf })),
+      }],
     },
   ];
 }
@@ -59,10 +73,10 @@ export const lobbyClosedComponents = () => [
   text('## 🃏 Lobby closed\nNobody took both spots in time. Run `/memorypoker` to start a new one.'),
 ];
 
-export function countdownComponents(n, players, round, wins) {
+export function countdownComponents(n, players, round, wins, bestOf = STANDARD_ROUNDS) {
   if (players.length === 1) return [text(`# 🃏 ${round > 1 ? 'New board' : 'Memory Poker'}\n## Starting in ${n}…`)];
   const [a, b] = players;
-  const tail = round > STANDARD_ROUNDS ? 'extra round, the next win takes the match' : `first to ${WINS_NEEDED}`;
+  const tail = round > bestOf ? 'extra round, the next win takes the match' : `first to ${winsNeeded(bestOf)}`;
   return [
     text(
       `# 🃏 Round ${round}: ${mention(a)} 🆚 ${mention(b)}\n` +
@@ -152,13 +166,14 @@ function duelParts(players, result, deal, origin) {
     const loser = result.matchWinner === a ? b : a;
     return [...parts, text(`${verdict}\n# 🏆 ${mention(result.matchWinner)} wins the match, ${result.wins[result.matchWinner]} to ${result.wins[loser]}`)];
   }
-  return [...parts, text(`${verdict}\n-# Score: ${mention(a)} ${result.wins[a]} · ${mention(b)} ${result.wins[b]} · first to ${WINS_NEEDED}`)];
+  return [...parts, text(`${verdict}\n-# Score: ${mention(a)} ${result.wins[a]} · ${mention(b)} ${result.wins[b]} · first to ${winsNeeded(result.bestOf)}`)];
 }
 
 // ── Custom ids ────────────────────────────────────────────────────────────────
 
 // A join button carries its spot (0 or 1) where other ids carry the round.
 export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
+export const modeId = (gameId) => `mp:mode:${gameId}:0`;
 export const startId = (gameId) => `mp:start:${gameId}:0`;
 export const ppickId = (gameId, round, letter) => `mp:ppick:${gameId}:${round}:${letter}`;
 export const plockId = (gameId, round) => `mp:plock:${gameId}:${round}`;

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  cardLabel, lobbyComponents, soloStartComponents, startId, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
+  cardLabel, lobbyComponents, soloStartComponents, startId, modeId, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, readyStatus, pickerComponents, joinId, ppickId, plockId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
@@ -35,7 +35,7 @@ test('the lobby carries the instructions with the exact timings', () => {
   assert.match(t, /2\. The cards turn face down and three shared cards are revealed\./);
   assert.match(t, /3\. You have 30 seconds to place your two markers on the squares you think make the best hand\./);
   assert.match(t, /4\. Both hands are revealed\. The stronger poker hand wins the round\./);
-  assert.match(t, /best of 5/i);
+  assert.match(t, /Single round/);
   assert.ok(t.includes('<t:1700000060:R>'));
 });
 
@@ -61,7 +61,7 @@ test('the lobby shows who holds each spot and has one join button per spot', () 
   const taken = flatTexts(lobbyComponents(GAME, [A, null], 1));
   assert.ok(taken.includes(`Player 1: <@${A}>`));
   assert.match(taken, /Player 2: open/);
-  const buttons = rowButtons(lobbyComponents(GAME, [A, null], 1));
+  const buttons = rowButtons(lobbyComponents(GAME, [A, null], 1)).filter((b) => b.type === 2);
   assert.deepEqual(buttons.map((b) => b.label), ['Join as Player 1', 'Join as Player 2']);
   assert.deepEqual(buttons.map((b) => b.custom_id), [joinId(GAME, 0), joinId(GAME, 1)]);
 });
@@ -115,7 +115,7 @@ test('hidden message shows the face-down lettered cards and the shared cards as 
 });
 
 const duelResult = (over = {}) => ({
-  round: 2, outcome: 'win', winner: A,
+  round: 2, bestOf: 5, outcome: 'win', winner: A,
   hands: { [A]: hand(7, [13, 2]), [B]: hand(2, [13, 4, 2]) },
   picks: { [A]: [2, 3], [B]: [0, 1] },
   forfeited: [], wins: { [A]: 1, [B]: 0 }, finished: false, matchWinner: null, analysis: null,
@@ -267,4 +267,23 @@ test('memorypoker command is guild-only and solo is an optional yes/no', async (
   const solo = MEMORYPOKER_COMMAND.options[0];
   assert.equal(solo.type, 5);
   assert.notEqual(solo.required, true);
+});
+
+test('the lobby has a match length selector that defaults to a single round', () => {
+  const menu = rowButtons(lobbyComponents(GAME, [null, null], 1)).find((c) => c.type === 3);
+  assert.equal(menu.custom_id, modeId(GAME));
+  assert.deepEqual(menu.options.map((o) => [o.label, o.value]), [['Single round', '1'], ['Best of 3', '3'], ['Best of 5', '5']]);
+  assert.deepEqual(menu.options.filter((o) => o.default).map((o) => o.value), ['1']);
+});
+
+test('the lobby selector and rules text follow the chosen match length', () => {
+  const parts = lobbyComponents(GAME, [null, null], 1, 3);
+  assert.deepEqual(rowButtons(parts).find((c) => c.type === 3).options.filter((o) => o.default).map((o) => o.value), ['3']);
+  assert.match(flatTexts(parts), /Best of 3: the first to win 2 rounds/);
+  assert.match(flatTexts(lobbyComponents(GAME, [null, null], 1, 5)), /Best of 5: the first to win 3 rounds/);
+});
+
+test('the countdown score line uses the match length', () => {
+  assert.match(flatTexts(countdownComponents(3, [A, B], 2, { [A]: 1, [B]: 0 }, 3)), /first to 2/);
+  assert.match(flatTexts(countdownComponents(3, [A, B], 4, { [A]: 1, [B]: 1 }, 3)), /extra round/);
 });

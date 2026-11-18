@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FLASH_MS, ANSWER_MS, WINS_NEEDED, STANDARD_ROUNDS,
+  FLASH_MS, ANSWER_MS, WINS_NEEDED, STANDARD_ROUNDS, winsNeeded,
   newGame, viewBoard, markHidden, submitAnswer, placeMarker, lockIn, forfeitExpired, nextRound, isStale,
   enqueue, takeDue, nextAlarmAt,
 } from '../src/pokerGame.js';
@@ -374,4 +374,25 @@ test('markers are per player and each round starts with none', () => {
   assert.deepEqual(marked.per[B].markers, []);
   const done = playRound(duel(), BEST, WEAK).state;
   assert.deepEqual(nextRound(done, DEAL, T0).state.per[A].markers, []);
+});
+
+test('a single round ends the duel on the first win, and a draw goes to an extra round', () => {
+  const won = playRound(newGame([A, B], DEAL, T0, 1), BEST, WEAK).result.roundResult;
+  assert.equal(won.finished, true);
+  assert.equal(won.matchWinner, A);
+  const drawn = playRound(newGame([A, B], DEAL, T0, 1), WEAK, WEAK).result.roundResult;
+  assert.equal(drawn.finished, false);
+});
+
+test('best of 3 ends on two wins', () => {
+  let state = newGame([A, B], DEAL, T0, 3);
+  state = playRound(state, BEST, WEAK).state;
+  state = nextRound(state, DEAL, T0).state;
+  const last = playRound(state, BEST, WEAK).result.roundResult;
+  assert.equal(last.finished, true);
+  assert.equal(last.round, 2);
+});
+
+test('wins needed is half the rounds, rounded up', () => {
+  assert.deepEqual([1, 3, 5].map(winsNeeded), [1, 2, 3]);
 });

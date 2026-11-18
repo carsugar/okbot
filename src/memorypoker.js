@@ -5,7 +5,7 @@ import {
   newGame, viewBoard, markHidden, placeMarker, lockIn, forfeitExpired, nextRound, isStale,
   enqueue, takeDue, nextAlarmAt, FLASH_MS,
 } from './pokerGame.js';
-import { newLobby, claim, LOBBY_MS } from './pokerLobby.js';
+import { newLobby, claim, setBestOf, LOBBY_MS } from './pokerLobby.js';
 import {
   lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, pickerComponents, parseId,
@@ -80,13 +80,22 @@ export class MemoryPokerGame extends DurableObject {
     else tokens[userId] = token;
     if (out.result.type !== 'full') {
       await this.ctx.storage.put({ lobby: out.lobby, lobbyTokens: tokens });
-      return { type: 'updated', spots: out.lobby.spots, closesAt: meta.closesAt };
+      return { type: 'updated', spots: out.lobby.spots, bestOf: out.lobby.bestOf, closesAt: meta.closesAt };
     }
     const now = Date.now();
-    const game = newGame(out.lobby.spots, randomDeal(), now);
+    const game = newGame(out.lobby.spots, randomDeal(), now, out.lobby.bestOf);
     await this.ctx.storage.delete(['lobby', 'lobbyTokens']);
     await this.#startRound(game, token, tokens, now);
-    return { type: 'started', players: game.players, wins: game.wins };
+    return { type: 'started', players: game.players, wins: game.wins, bestOf: game.bestOf };
+  }
+
+  // The match length picked in the lobby.
+  async setBestOf(bestOf) {
+    const { lobby, state, meta } = await this.#load();
+    if (!lobby) return { type: state ? 'started' : 'expired' };
+    const next = setBestOf(lobby, bestOf);
+    await this.ctx.storage.put({ lobby: next });
+    return { type: 'updated', spots: next.spots, bestOf: next.bestOf, closesAt: meta.closesAt };
   }
 
   async startSolo(userId, gameId, origin, appId, token) {
@@ -143,7 +152,7 @@ export class MemoryPokerGame extends DurableObject {
     if (out.result.type !== 'ok') return out.result;
     await this.ctx.storage.delete('ready');
     await this.#startRound(out.state, token, ready, now);
-    return { type: 'ok', players: out.state.players, round: out.state.round, wins: out.state.wins };
+    return { type: 'ok', players: out.state.players, round: out.state.round, wins: out.state.wins, bestOf: out.state.bestOf };
   }
 
   async alarm() {
@@ -172,7 +181,7 @@ export class MemoryPokerGame extends DurableObject {
     let closePickers = false;
     for (const item of due) {
       if (item.type === 'tick') {
-        edits.push(countdownComponents(item.n, current.players, current.round, current.wins));
+        edits.push(countdownComponents(item.n, current.players, current.round, current.wins, current.bestOf));
       } else if (item.type === 'flash') {
         for (const id of current.players) current = viewBoard(current, id, now).state;
         const hideAt = now + FLASH_MS;
@@ -314,9 +323,15 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     const spot = round; // join buttons carry their spot where other ids carry the round
     const result = await stub.join(userId, spot, interaction.token);
     if (result.type === 'already_in') return ephemeral(`You are already Player ${result.spot + 1}. Press your own button again to give the spot up.`);
-    if (result.type === 'updated') return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt)));
-    if (result.type === 'started') return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, 1, result.wins));
+    if (result.type === 'updated') return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt), result.bestOf));
+    if (result.type === 'started') return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, 1, result.wins, result.bestOf));
     return refusal(result.type);
+  }
+
+  if (action === 'mode') {
+    const result = await stub.setBestOf(Number(interaction.data.values[0]));
+    if (result.type !== 'updated') return refusal(result.type);
+    return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt), result.bestOf));
   }
 
   if (action === 'start') {
@@ -339,7 +354,7 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     const result = await stub.next(userId, round, interaction.token);
     if (result.type === 'waiting') return updateMessage(result.components);
     if (result.type !== 'ok') return refusal(result.type);
-    return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, result.round, result.wins));
+    return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, result.round, result.wins, result.bestOf));
   }
 
   return ephemeral('Unknown button.');

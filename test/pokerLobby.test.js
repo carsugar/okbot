@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newLobby, claim, LOBBY_MS } from '../src/pokerLobby.js';
+import { newLobby, claim, setBestOf, LOBBY_MS } from '../src/pokerLobby.js';
 
 const [A, B, C] = ['u1', 'u2', 'u3'];
 
@@ -50,4 +50,14 @@ test('either player can take either spot, in either order', () => {
   const { lobby, result } = claim(first, A, 0);
   assert.equal(result.type, 'full');
   assert.deepEqual(lobby.spots, [A, B]);
+});
+
+test('a new lobby is a single round, and only 1, 3 or 5 can be picked', () => {
+  assert.equal(newLobby().bestOf, 1);
+  assert.equal(setBestOf(newLobby(), 3).bestOf, 3);
+  assert.equal(setBestOf(newLobby(), 4).bestOf, 1);
+});
+
+test('joining keeps the chosen match length', () => {
+  assert.equal(claim(setBestOf(newLobby(), 5), A, 0).lobby.bestOf, 5);
 });
