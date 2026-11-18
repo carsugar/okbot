@@ -54,17 +54,16 @@ test('solo shows the same instructions and a Start button, and no spots or lobby
   assert.deepEqual(parseId(startId('123')), { action: 'start', gameId: '123', round: 0, letter: '' });
 });
 
-test('the lobby shows who holds each spot and has one join button per spot', () => {
-  const open = flatTexts(lobbyComponents(GAME, [null, null], 1));
-  assert.match(open, /Player 1: open/);
-  assert.match(open, /Player 2: open/);
-  const taken = flatTexts(lobbyComponents(GAME, [A, null], 1));
-  assert.ok(taken.includes(`Player 1: <@${A}>`));
-  assert.match(taken, /Player 2: open/);
-  const open2 = rowButtons(lobbyComponents(GAME, [null, null], 1)).filter((b) => b.type === 2);
-  assert.deepEqual(open2.map((b) => b.label), ['Join as Player 1', 'Join as Player 2']);
-  assert.deepEqual(open2.map((b) => b.custom_id), [joinId(GAME, 0), joinId(GAME, 1)]);
-  assert.ok(open2.every((b) => b.style === 1 && !b.disabled));
+const allButtons = (parts) => parts.flatMap((c) => (c.type === 1 ? c.components : c.type === 9 && c.accessory?.type === 2 ? [c.accessory] : [])).filter((b) => b.type === 2);
+
+test('an open spot is its name with a Join button beside it', () => {
+  const parts = lobbyComponents(GAME, [null, null], 1);
+  assert.match(flatTexts(parts), /\*\*Player 1\*\*\nOpen/);
+  assert.match(flatTexts(parts), /\*\*Player 2\*\*\nOpen/);
+  const buttons = allButtons(parts);
+  assert.deepEqual(buttons.map((b) => b.label), ['Join', 'Join']);
+  assert.deepEqual(buttons.map((b) => b.custom_id), [joinId(GAME, 0), joinId(GAME, 1)]);
+  assert.ok(buttons.every((b) => b.style === 1 && !b.disabled));
 });
 
 test('a closed lobby says so and has no buttons', () => {
@@ -285,7 +284,7 @@ test('the lobby selector follows the chosen match length, with no rules sentence
 
 test('the lobby order is dropdown, then each spot right above its own join button, then the closing time last, with gaps between', () => {
   const kinds = lobbyComponents(GAME, [null, null], 1_700_000_060).map((c) => (c.type === 1 ? `row:${c.components[0].type}` : c.type));
-  assert.deepEqual(kinds, [10, 'row:3', 14, 10, 'row:2', 14, 10, 'row:2', 14, 10]);
+  assert.deepEqual(kinds, [10, 'row:3', 14, 9, 14, 9, 14, 10]);
   const last = lobbyComponents(GAME, [null, null], 1_700_000_060).at(-1);
   assert.match(last.content, /Lobby closes <t:1700000060:R>/);
 });
@@ -321,22 +320,13 @@ test('a message that is not a picker gives no guess', () => {
   assert.equal(nextPicker({ components: [], attachments: [] }, '123', 2, 'C', 'https://x.dev'), null);
 });
 
-test('a player who joined shows their avatar beside their name; an open spot is plain text', () => {
-  const parts = lobbyComponents(GAME, [A, null], 1, 1, { [A]: 'https://cdn.example/a.png' });
-  const section = parts.find((c) => c.type === 9);
-  assert.equal(section.accessory.type, 11);
-  assert.equal(section.accessory.media.url, 'https://cdn.example/a.png');
-  assert.equal(section.components[0].content, `Player 1: <@${A}>`);
-  assert.equal(parts.filter((c) => c.type === 9).length, 1);
-  assert.ok(parts.some((c) => c.type === 10 && c.content === 'Player 2: open'));
-});
 
-test('a taken spot has a gray disabled button that says so, right under the player with their avatar', () => {
+test('a taken spot shows the avatar beside the name, with a Leave button under it', () => {
   const parts = lobbyComponents(GAME, [A, null], 1, 1, { [A]: 'https://cdn.example/a.png' });
   const at = parts.findIndex((c) => c.type === 9);
   assert.equal(parts[at].accessory.media.url, 'https://cdn.example/a.png');
-  const taken = parts[at + 1].components[0];
-  assert.deepEqual([taken.label, taken.style, taken.disabled], ['Player 1 taken', 2, true]);
-  const open = rowButtons(parts).filter((b) => b.type === 2).at(-1);
-  assert.deepEqual([open.label, open.style, open.disabled], ['Join as Player 2', 1, undefined]);
+  assert.match(parts[at].components[0].content, new RegExp(`^\\*\\*Player 1\\*\\*\\n<@${A}>`));
+  const leave = parts[at + 1].components[0];
+  assert.deepEqual([leave.label, leave.disabled, leave.custom_id], ['Leave', undefined, joinId(GAME, 0)]);
+  assert.deepEqual(allButtons(parts).map((b) => b.label), ['Leave', 'Join']);
 });

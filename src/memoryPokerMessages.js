@@ -16,8 +16,6 @@ const text = (content) => ({ type: 10, content });
 const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });
 const button = (style, label, custom_id, extra = {}) => ({ type: 2, style, label, custom_id, ...extra });
 
-const spotLabel = (id) => (id ? mention(id) : 'open');
-
 // The title, the one-line idea and the four steps. Solo reads step 4 for one player.
 const howToText = (solo) => {
   const flash = FLASH_MS / 1000;
@@ -39,25 +37,18 @@ const howToText = (solo) => {
 
 const MATCH_LABEL = { 1: 'Single round', 3: 'Best of 3', 5: 'Best of 5' };
 
-// A taken spot shows the player's avatar beside their name; an open one is just text.
-const spotPart = (i, id, avatar) =>
-  id && avatar
-    ? { type: 9, components: [text(`Player ${i + 1}: ${mention(id)}`)], accessory: { type: 11, media: { url: avatar } } }
-    : text(`Player ${i + 1}: ${spotLabel(id)}`);
+const gap = { type: 14, divider: false, spacing: 1 };
 
-const gap = { type: 14, divider: false, spacing: 2 };
-
-// One spot: who holds it (with their avatar, if taken), then its button right below. Once
-// taken the button is gray and disabled.
-const spotBlock = (gameId, i, id, avatar) => [
-  spotPart(i, id, avatar),
-  {
-    type: 1,
-    components: [id
-      ? button(2, `Player ${i + 1} taken`, joinId(gameId, i), { disabled: true })
-      : button(1, `Join as Player ${i + 1}`, joinId(gameId, i))],
-  },
-];
+// One spot. Open: its name with the Join button beside it. Taken: the player's avatar beside
+// their name, and a Leave button underneath (pressing your own spot's button gives it up).
+const spotBlock = (gameId, i, id, avatar) => {
+  const name = `**Player ${i + 1}**`;
+  const press = joinId(gameId, i);
+  if (!id) return [{ type: 9, components: [text(`${name}\nOpen`)], accessory: button(1, 'Join', press) }];
+  const who = text(`${name}\n${mention(id)}\n-# Joined ✅`);
+  const leave = { type: 1, components: [button(2, 'Leave', press)] };
+  return avatar ? [{ type: 9, components: [who], accessory: { type: 11, media: { url: avatar } } }, leave] : [who, leave];
+};
 
 // The instructions, the match length, each spot with its own button, and last the time left.
 export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1, avatars = {}) {
