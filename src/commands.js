@@ -82,7 +82,7 @@ export const TEST_TEMPLATE_COMMAND = {
 
 export const MEMORYPOKER_COMMAND = {
   name: 'memorypoker',
-  description: 'Memorize a board of cards and pick the best poker hand. Add an opponent for a duel.',
+  description: 'Memorize a board of cards and pick the best poker hand. Opens a lobby for two players.',
   contexts: [0], // guild channels only
-  options: [{ type: 6, name: 'opponent', description: 'Leave empty to play solo', required: false }],
+  options: [{ type: 5, name: 'solo', description: 'Practise alone, privately', required: false }],
 };

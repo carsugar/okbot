@@ -12,63 +12,77 @@ export const cardLabel = (card) => `${RANK_LABEL[card.rank] ?? card.rank}${SUIT_
 const mention = (id) => `<@${id}>`;
 const squaresLabel = ([i, j]) => `${SQUARES[i]} + ${SQUARES[j]}`;
 
-export function startText(players, round, wins) {
-  const solo = players.length === 1;
-  const seconds = FLASH_MS / 1000;
-  if (round > 1) {
-    if (solo) {
-      return ['# 🃏 New board', SPACER, 'Press **Show me my board** when you are ready.', SPACER].join('\n');
-    }
-    const [a, b] = players;
-    const tail = round > STANDARD_ROUNDS ? 'extra round, the next win takes the match' : `first to ${WINS_NEEDED}`;
-    return [
-      `# 🃏 Round ${round}: ${mention(a)} 🆚 ${mention(b)}`,
-      SPACER,
-      `Score: ${mention(a)} ${wins[a]} · ${mention(b)} ${wins[b]} · ${tail}`,
-      '',
-      'Press **Show me my board** when you are ready.',
-      SPACER,
-    ].join('\n');
-  }
-
-  const title = solo ? '# 🃏 Memory Poker' : `# 🃏 Memory Poker: ${mention(players[0])} 🆚 ${mention(players[1])}`;
-  const answerSeconds = ANSWER_MS / 1000;
-  return [
-    title,
-    SPACER,
-    '*Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards.*',
-    '',
-    '## How to play:',
-    '',
-    `1. 16 cards are dealt face up on squares A to P. You have ${seconds} seconds to memorize them.`,
-    '2. The cards turn face down and three shared cards are revealed.',
-    `3. You have ${answerSeconds} seconds to place your two markers on the squares you think make the best hand.`,
-    solo
-      ? '4. Your hand is revealed, and you find out whether it was the best one on the board.'
-      : '4. Both hands are revealed. The stronger poker hand wins the round.',
-    '',
-    ...(solo ? [] : [`-# Best of ${STANDARD_ROUNDS}: the first to win ${WINS_NEEDED} rounds takes the duel.`]),
-    'Press **Show me my board** when you are ready.',
-    SPACER,
-  ].join('\n');
-}
-
 const text = (content) => ({ type: 10, content });
 const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });
+const button = (style, label, custom_id, extra = {}) => ({ type: 2, style, label, custom_id, ...extra });
+
+const spotLabel = (id) => (id ? mention(id) : 'open');
+
+export function lobbyComponents(gameId, spots, closesAtSec) {
+  const flash = FLASH_MS / 1000;
+  const answer = ANSWER_MS / 1000;
+  return [
+    text(
+      [
+        '# 🃏 Memory Poker',
+        '*Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards.*',
+        '',
+        '## How to play:',
+        '',
+        `1. 16 cards are dealt face up on squares A to P. You have ${flash} seconds to memorize them.`,
+        '2. The cards turn face down and three shared cards are revealed.',
+        `3. You have ${answer} seconds to place your two markers on the squares you think make the best hand.`,
+        '4. Both hands are revealed. The stronger poker hand wins the round.',
+        '',
+        `-# Best of ${STANDARD_ROUNDS}: the first to win ${WINS_NEEDED} rounds takes the duel.`,
+      ].join('\n'),
+    ),
+    text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}\n-# Lobby closes <t:${closesAtSec}:R>. The countdown starts when both spots are taken.`),
+    {
+      type: 1,
+      components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],
+    },
+  ];
+}
+
+export const lobbyClosedComponents = () => [
+  text('## 🃏 Lobby closed\nNobody took both spots in time. Run `/memorypoker` to start a new one.'),
+];
+
+export function countdownComponents(n, players, round, wins) {
+  if (players.length === 1) return [text(`# 🃏 ${round > 1 ? 'New board' : 'Memory Poker'}\n## Starting in ${n}…`)];
+  const [a, b] = players;
+  const tail = round > STANDARD_ROUNDS ? 'extra round, the next win takes the match' : `first to ${WINS_NEEDED}`;
+  return [
+    text(
+      `# 🃏 Round ${round}: ${mention(a)} 🆚 ${mention(b)}\n` +
+        (round > 1 ? `Score: ${mention(a)} ${wins[a]} · ${mention(b)} ${wins[b]} · ${tail}\n` : '') +
+        `## Starting in ${n}…`,
+    ),
+  ];
+}
+
+// ✅ locked in, ⌛ ran out of time, ⏳ still picking.
+export const lockStatus = (players, per) =>
+  players.map((id) => `${per[id].answer !== null ? '✅' : per[id].forfeited ? '⌛' : '⏳'} ${mention(id)}`).join(' · ');
+
 
 export const boardComponents = (board, hideAtSec, origin) => [
   text(`## 🃏 Memorize the board\n-# Hides <t:${hideAtSec}:R>`),
   gallery(imageUrl(origin, 'board', board)),
 ];
 
-// `sel` is the squares picked so far, like 'CJ'.
-export const hiddenComponents = (shared, deadlineSec, origin, sel = '') => [
+export const hiddenComponents = (shared, deadlineSec, origin, status) => [
   text('## 🃏 Board hidden\nYour cards are face down, lettered A to P. The three shared cards are on the bottom row.'),
   gallery(imageUrl(origin, 'hidden', shared)),
-  text(
-    `-# Place your two markers <t:${deadlineSec}:R>` +
-      (sel ? `\nSelected: **${[...sel].join(' + ')}**` : ''),
-  ),
+  text(`-# Place your two markers <t:${deadlineSec}:R>\n${status}`),
+];
+
+export const openRow = (gameId, round) => ({ type: 1, components: [button(1, 'Place markers', openId(gameId, round))] });
+
+// The private message each player picks their squares in. `sel` is the picks so far, like 'CJ'.
+export const pickerComponents = (deadlineSec, sel) => [
+  text(`## 🃏 Place your markers\n-# Pick two squares, then Lock in <t:${deadlineSec}:R>` + (sel ? `\nSelected: **${[...sel].join(' + ')}**` : '')),
 ];
 
 // Sixteen square buttons (the picks so far are highlighted), then Lock in and Clear.
@@ -132,7 +146,9 @@ export function roundComponents(players, result, deal, origin) {
 
 // ── Custom ids ────────────────────────────────────────────────────────────────
 
-export const showId = (gameId, round) => `mp:show:${gameId}:${round}`;
+// A join button carries its spot (0 or 1) where other ids carry the round.
+export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
+export const openId = (gameId, round) => `mp:open:${gameId}:${round}`;
 export const pickId = (gameId, round, sel, letter) => `mp:pick:${gameId}:${round}:${sel}:${letter}`;
 export const lockId = (gameId, round, sel) => `mp:lock:${gameId}:${round}:${sel}`;
 export const clearId = (gameId, round) => `mp:clear:${gameId}:${round}`;
