@@ -64,3 +64,19 @@ export const MINDMELD_COMMAND = {
   contexts: [0], // guild channels only
   options: [{ type: 6, name: 'partner', description: 'Who you are playing with', required: true }],
 };
+
+// Staging copies of the template commands, to try new output before it replaces the real ones.
+export const TEST_TEMPLATE_COMMAND = {
+  name: 'test_template',
+  description: 'Try the new card-style template output (staging).',
+  default_member_permissions: '32', // MANAGE_GUILD
+  contexts: [0],
+  options: [
+    {
+      type: 1,
+      name: 'routeinfo_legstart',
+      description: 'Generate a Route Info: Leg Start card and tag.',
+      options: [{ type: 4, name: 'leg', description: 'Leg number', required: true }],
+    },
+  ],
+};

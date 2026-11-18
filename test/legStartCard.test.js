@@ -1,0 +1,91 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder, newSlug, INVISIBLE } from '../src/legStartCard.js';
+import { embedBytes, MAX_EMBED_BYTES } from '../src/routeEmbedPage.js';
+
+const IMAGE = 'https://example.com/header.webp';
+const fields = {
+  leg: '3',
+  departure: 'Machu Picchu, Peru | https://example.com/dep.png',
+  destination: 'Santiago, Chile | Cajón del Maipo | SCL Airport',
+  money: '$15',
+  flightTime: '3 hours',
+};
+const texts = (embed) => embed.component.components.filter((c) => c.type === 10).map((c) => c.content).join('\n');
+
+test('parseLegStart splits the pipe fields and normalizes money and flight time', () => {
+  const d = parseLegStart(fields);
+  assert.equal(d.leg, '3');
+  assert.equal(d.departure, 'Machu Picchu, Peru');
+  assert.equal(d.destination, 'Santiago, Chile');
+  assert.equal(d.site, 'Cajón del Maipo');
+  assert.equal(d.airport, 'SCL Airport');
+  assert.equal(d.country, 'Chile');
+  assert.equal(d.moneyDisplay, '$15');
+  assert.equal(d.flightTime, '3 hour flight');
+  assert.equal(d.moneyCommand, '!Claim-Leg3-Money');
+  assert.equal(d.touchdownCommand, '!Santiago-Touchdown');
+});
+
+test('parseLegStart copes with missing optional parts', () => {
+  const d = parseLegStart({ ...fields, destination: 'Lima', money: '', departure: 'Cusco' });
+  assert.equal(d.site, '');
+  assert.equal(d.airport, '');
+  assert.equal(d.country, 'Lima');
+  assert.equal(d.moneyDisplay, '');
+  assert.equal(d.touchdownCommand, '!Lima-Touchdown');
+});
+
+test('flight time that already says flight is left alone', () => {
+  assert.equal(parseLegStart({ ...fields, flightTime: '3 hours flight' }).flightTime, '3 hour flight');
+});
+
+test('card is one container: title, full-width banner, then the leg text', () => {
+  const embed = legStartEmbed(parseLegStart(fields), IMAGE);
+  const parts = embed.component.components;
+  assert.equal(embed.component.type, 17);
+  assert.match(parts[0].content, /# ROUTE INFO\n-# LEG 3 START/);
+  assert.equal(parts[1].type, 12);
+  assert.equal(parts[1].items[0].media.url, IMAGE);
+  const t = texts(embed);
+  assert.match(t, /\*\*Machu Picchu, Peru\*\*/);
+  assert.match(t, /\*\*Santiago, Chile!\*\*/);
+  assert.match(t, /\*\*3 hour flight\*\*/);
+  assert.match(t, /\*\*Cajón del Maipo\*\*/);
+  assert.match(t, /`!Claim-Leg3-Money`/);
+  assert.match(t, /`!Santiago-Touchdown`.*SCL Airport/);
+});
+
+test('no money means no money section; no airport changes the touchdown line', () => {
+  const t = texts(legStartEmbed(parseLegStart({ ...fields, money: '', destination: 'Santiago, Chile | Cajón del Maipo' }), IMAGE));
+  assert.doesNotMatch(t, /Claim-Leg/);
+  assert.match(t, /officially land\./);
+});
+
+test('card stays under 3,000 bytes for typical input and rejects nothing silently', () => {
+  assert.ok(embedBytes(legStartEmbed(parseLegStart(fields), IMAGE)) < MAX_EMBED_BYTES);
+});
+
+test('worst-case multibyte field lengths are reported as too big, not truncated', () => {
+  const huge = parseLegStart({ ...fields, departure: '€'.repeat(600), destination: `${'€'.repeat(130)} | ${'€'.repeat(130)} | ${'€'.repeat(130)}` });
+  assert.ok(embedBytes(legStartEmbed(huge, IMAGE)) > MAX_EMBED_BYTES);
+});
+
+test('tag text is the carlbot mention, tag name and an invisible-text link', () => {
+  const t = legTagText({ carlbotMention: '<@1>', tagName: 'test-leg-3', url: 'https://x.dev/route/abc' });
+  assert.equal(t, `<@1> tag + test-leg-3 [${INVISIBLE}](https://x.dev/route/abc)`);
+  assert.equal(INVISIBLE, '⠀');
+});
+
+test('mimu autoresponder only exists when there is money', () => {
+  assert.equal(mimuAutoresponder(parseLegStart({ ...fields, money: '' })), null);
+  assert.equal(
+    mimuAutoresponder(parseLegStart(fields)),
+    '/autoresponder add trigger:!Claim-Leg3-Money reply:$15 has been added to your account! {modifybal: 15}',
+  );
+});
+
+test('newSlug is 12 url-safe characters from nine bytes', () => {
+  assert.match(newSlug(new Uint8Array(9).fill(255)), /^[A-Za-z0-9_-]{12}$/);
+  assert.notEqual(newSlug(new Uint8Array(9).fill(1)), newSlug(new Uint8Array(9).fill(2)));
+});
