@@ -41,12 +41,11 @@ const MATCH_LABEL = { 1: 'Single round', 3: 'Best of 3', 5: 'Best of 5' };
 
 const gap = { type: 14, divider: false, spacing: 2 };
 
-// The instructions, who holds each spot, the match length, the join buttons, and last the
-// time left. Gaps keep the dropdown and the buttons apart.
+// The instructions, the match length, who holds each spot right above the join buttons, and
+// last the time left. Gaps keep the dropdown and the buttons apart.
 export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
   return [
     text(howToText(false)),
-    text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}`),
     {
       type: 1,
       components: [{
@@ -57,6 +56,7 @@ export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
       }],
     },
     gap,
+    text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}`),
     {
       type: 1,
       components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],

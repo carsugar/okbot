@@ -282,9 +282,9 @@ test('the lobby selector follows the chosen match length, with no rules sentence
   assert.doesNotMatch(flatTexts(parts), /first to win/);
 });
 
-test('the lobby order is dropdown, then join buttons, then the closing time last, with gaps between', () => {
+test('the lobby order is dropdown, then the spots right above the join buttons, then the closing time last, with gaps between', () => {
   const kinds = lobbyComponents(GAME, [null, null], 1_700_000_060).map((c) => (c.type === 1 ? `row:${c.components[0].type}` : c.type));
-  assert.deepEqual(kinds, [10, 10, 'row:3', 14, 'row:2', 14, 10]);
+  assert.deepEqual(kinds, [10, 'row:3', 14, 10, 'row:2', 14, 10]);
   const last = lobbyComponents(GAME, [null, null], 1_700_000_060).at(-1);
   assert.match(last.content, /Lobby closes <t:1700000060:R>/);
 });
