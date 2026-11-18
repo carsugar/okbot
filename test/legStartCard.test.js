@@ -71,9 +71,9 @@ test('worst-case multibyte field lengths are reported as too big, not truncated'
   assert.ok(embedBytes(legStartEmbed(huge, IMAGE)) > MAX_EMBED_BYTES);
 });
 
-test('tag text is the carlbot mention, tag name and an invisible-text link', () => {
+test('tag text is the carlbot mention, tag name and an invisible-text link that changes on every use', () => {
   const t = legTagText({ carlbotMention: '<@1>', tagName: 'test-leg-3', url: 'https://x.dev/route/abc' });
-  assert.equal(t, `<@1> tag + test-leg-3 [${INVISIBLE}](https://x.dev/route/abc)`);
+  assert.equal(t, `<@1> tag + test-leg-3 [${INVISIBLE}](https://x.dev/route/abc?v={unix})`);
   assert.equal(INVISIBLE, '⠀');
 });
 

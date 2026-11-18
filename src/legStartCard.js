@@ -73,7 +73,10 @@ export function legFormValues(d) {
   };
 }
 
-export const legTagText = ({ carlbotMention, tagName, url }) => `${carlbotMention} tag + ${tagName} [${INVISIBLE}](${url})`;
+// Carlbot fills {unix} with the current time each time the tag runs, so every use posts a
+// slightly different link and Discord fetches the card fresh instead of reusing a cached one.
+export const legTagText = ({ carlbotMention, tagName, url }) =>
+  `${carlbotMention} tag + ${tagName} [${INVISIBLE}](${url}?v={unix})`;
 
 export const mimuAutoresponder = (d) =>
   d.moneyDisplay
