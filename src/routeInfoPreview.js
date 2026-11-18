@@ -22,7 +22,8 @@ export function routeInfoPreviewMessage(headerImage) {
         type: 17,
         accent_color: ACCENT,
         components: [
-          { type: 9, components: [text(intro)], accessory: { type: 11, media: { url: headerImage } } },
+          text(intro),
+          { type: 12, items: [{ media: { url: headerImage } }] },
           separator(),
           text('All teams will be put onto the same, equalizing **3 hour flight** to Chile. Once there, make your way to **Cajón del Maipo** to receive your next clue.'),
           text('### 💵 Leg money\nYou have received **$15** for this leg. Use the command `!Claim-Leg3-Money` to claim it. Only one designated partner should use this command.'),
