@@ -61,9 +61,10 @@ test('the lobby shows who holds each spot and has one join button per spot', () 
   const taken = flatTexts(lobbyComponents(GAME, [A, null], 1));
   assert.ok(taken.includes(`Player 1: <@${A}>`));
   assert.match(taken, /Player 2: open/);
-  const buttons = rowButtons(lobbyComponents(GAME, [A, null], 1)).filter((b) => b.type === 2);
-  assert.deepEqual(buttons.map((b) => b.label), ['Join as Player 1', 'Join as Player 2']);
-  assert.deepEqual(buttons.map((b) => b.custom_id), [joinId(GAME, 0), joinId(GAME, 1)]);
+  const open2 = rowButtons(lobbyComponents(GAME, [null, null], 1)).filter((b) => b.type === 2);
+  assert.deepEqual(open2.map((b) => b.label), ['Join as Player 1', 'Join as Player 2']);
+  assert.deepEqual(open2.map((b) => b.custom_id), [joinId(GAME, 0), joinId(GAME, 1)]);
+  assert.ok(open2.every((b) => b.style === 1 && !b.disabled));
 });
 
 test('a closed lobby says so and has no buttons', () => {
@@ -282,9 +283,9 @@ test('the lobby selector follows the chosen match length, with no rules sentence
   assert.doesNotMatch(flatTexts(parts), /first to win/);
 });
 
-test('the lobby order is dropdown, then the spots right above the join buttons, then the closing time last, with gaps between', () => {
+test('the lobby order is dropdown, then each spot right above its own join button, then the closing time last, with gaps between', () => {
   const kinds = lobbyComponents(GAME, [null, null], 1_700_000_060).map((c) => (c.type === 1 ? `row:${c.components[0].type}` : c.type));
-  assert.deepEqual(kinds, [10, 'row:3', 14, 10, 10, 'row:2', 14, 10]);
+  assert.deepEqual(kinds, [10, 'row:3', 14, 10, 'row:2', 14, 10, 'row:2', 14, 10]);
   const last = lobbyComponents(GAME, [null, null], 1_700_000_060).at(-1);
   assert.match(last.content, /Lobby closes <t:1700000060:R>/);
 });
@@ -328,4 +329,14 @@ test('a player who joined shows their avatar beside their name; an open spot is 
   assert.equal(section.components[0].content, `Player 1: <@${A}>`);
   assert.equal(parts.filter((c) => c.type === 9).length, 1);
   assert.ok(parts.some((c) => c.type === 10 && c.content === 'Player 2: open'));
+});
+
+test('a taken spot has a gray disabled button that says so, right under the player with their avatar', () => {
+  const parts = lobbyComponents(GAME, [A, null], 1, 1, { [A]: 'https://cdn.example/a.png' });
+  const at = parts.findIndex((c) => c.type === 9);
+  assert.equal(parts[at].accessory.media.url, 'https://cdn.example/a.png');
+  const taken = parts[at + 1].components[0];
+  assert.deepEqual([taken.label, taken.style, taken.disabled], ['Player 1 taken', 2, true]);
+  const open = rowButtons(parts).filter((b) => b.type === 2).at(-1);
+  assert.deepEqual([open.label, open.style, open.disabled], ['Join as Player 2', 1, undefined]);
 });

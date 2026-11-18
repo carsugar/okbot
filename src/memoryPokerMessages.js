@@ -47,8 +47,19 @@ const spotPart = (i, id, avatar) =>
 
 const gap = { type: 14, divider: false, spacing: 2 };
 
-// The instructions, the match length, who holds each spot right above the join buttons, and
-// last the time left. Gaps keep the dropdown and the buttons apart.
+// One spot: who holds it (with their avatar, if taken), then its button right below. Once
+// taken the button is gray and disabled.
+const spotBlock = (gameId, i, id, avatar) => [
+  spotPart(i, id, avatar),
+  {
+    type: 1,
+    components: [id
+      ? button(2, `Player ${i + 1} taken`, joinId(gameId, i), { disabled: true })
+      : button(1, `Join as Player ${i + 1}`, joinId(gameId, i))],
+  },
+];
+
+// The instructions, the match length, each spot with its own button, and last the time left.
 export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1, avatars = {}) {
   return [
     text(howToText(false)),
@@ -62,11 +73,9 @@ export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1, avatars 
       }],
     },
     gap,
-    ...spots.map((id, i) => spotPart(i, id, avatars[id])),
-    {
-      type: 1,
-      components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],
-    },
+    ...spotBlock(gameId, 0, spots[0], avatars[spots[0]]),
+    gap,
+    ...spotBlock(gameId, 1, spots[1], avatars[spots[1]]),
     gap,
     text(`-# Lobby closes <t:${closesAtSec}:R>. The countdown starts when both spots are taken.`),
   ];
