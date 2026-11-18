@@ -40,13 +40,13 @@ test('flight time that already says flight is left alone', () => {
   assert.equal(parseLegStart({ ...fields, flightTime: '3 hours flight' }).flightTime, '3 hour flight');
 });
 
-test('card is one container: title, full-width banner, then the leg text', () => {
+test('card is one container: the banner image is the title, then the leg text', () => {
   const embed = legStartEmbed(parseLegStart(fields), IMAGE);
   const parts = embed.component.components;
   assert.equal(embed.component.type, 17);
-  assert.match(parts[0].content, /# ROUTE INFO\n-# LEG 3 START/);
-  assert.equal(parts[1].type, 12);
-  assert.equal(parts[1].items[0].media.url, IMAGE);
+  assert.equal(parts[0].type, 12);
+  assert.equal(parts[0].items[0].media.url, IMAGE);
+  assert.doesNotMatch(texts(embed), /ROUTE INFO|LEG 3 START/);
   const t = texts(embed);
   assert.match(t, /\*\*Machu Picchu, Peru\*\*/);
   assert.match(t, /\*\*Santiago, Chile!\*\*/);

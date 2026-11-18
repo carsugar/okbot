@@ -31,7 +31,6 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
 
 export function legStartEmbed(d, headerImage) {
   const parts = [
-    text(`# ROUTE INFO\n-# LEG ${d.leg} START`),
     { type: 12, items: [{ media: { url: headerImage } }] },
     text(`Make your way from **${d.departure}** to your next destination, **${d.destination}!**`),
     ...(d.departureImage ? [{ type: 12, items: [{ media: { url: d.departureImage } }] }] : []),
