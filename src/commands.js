@@ -59,3 +59,10 @@ export const MINDMELD_COMMAND = {
   contexts: [0], // guild channels only
   options: [{ type: 6, name: 'partner', description: 'Who you are playing with', required: true }],
 };
+
+export const MEMORYPOKER_COMMAND = {
+  name: 'memorypoker',
+  description: 'Memorize a board of cards and pick the best poker hand. Add an opponent for a duel.',
+  contexts: [0], // guild channels only
+  options: [{ type: 6, name: 'opponent', description: 'Leave empty to play solo', required: false }],
+};

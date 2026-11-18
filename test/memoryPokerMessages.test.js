@@ -174,3 +174,12 @@ test('ids round trip action, game and round, and stay under 100 characters', () 
   assert.deepEqual(parseId(modalId(g, 9)), { action: 'modal', gameId: g, round: 9 });
   for (const id of [showId(g, 999), answerId(g, 999), nextId(g, 999), modalId(g, 999)]) assert.ok(id.length < 100);
 });
+
+test('memorypoker command is guild-only and the opponent is optional', async () => {
+  const { MEMORYPOKER_COMMAND } = await import('../src/commands.js');
+  assert.equal(MEMORYPOKER_COMMAND.name, 'memorypoker');
+  assert.deepEqual(MEMORYPOKER_COMMAND.contexts, [0]);
+  const opponent = MEMORYPOKER_COMMAND.options.find((o) => o.name === 'opponent');
+  assert.equal(opponent.type, 6);
+  assert.notEqual(opponent.required, true);
+});
