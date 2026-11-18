@@ -39,6 +39,21 @@ Rules and extras:
 
 A card-memory game. Run `/memorypoker opponent:@someone` in a server channel for a duel, or `/memorypoker` with no opponent to practise solo (solo stays private).
 
+1. Press **Show me my board**. Only you see 16 cards dealt face up on squares A to P, and you have 20 seconds to memorize them.
+2. The cards turn face down, lettered A to P, and three shared cards are revealed.
+3. You have 30 seconds to place your two markers: press two square buttons, then **Lock in**.
+4. Your hand is those two cards plus the three shared cards, ranked as ordinary poker (suits never break ties). In a duel the stronger hand wins the round.
+
+Rules and extras:
+- A word can't be changed once locked in, and a word already said in the game (by either player, including forms like `rains` after `rain`) can't be used again.
+- Words are checked against [Datamuse](https://www.datamuse.com/api/). An unrecognized word gets a private warning with "did you mean" buttons, or **Use it anyway**. If Datamuse can't be reached, the word is simply accepted. Only the word is sent.
+- Either player can press **End game** (after a confirm) to abandon the game with no score.
+- Games can be played live or over hours, and expire after 24 hours with no activity. Game state is stored in a Durable Object (`MIND_MELD`), so `npm run deploy` creates it on first deploy.
+
+## Memory Poker
+
+A card-memory game. Run `/memorypoker opponent:@someone` in a server channel for a duel, or `/memorypoker` with no opponent to practise solo (solo stays private).
+
 1. Press **Show me my board**. Only you see a 4×4 board of cards on squares A to P, and it hides again after 20 seconds.
 2. Three shared cards are then revealed. Press **Enter your two squares** and type two letters, like `C J`.
 3. Your hand is those two cards plus the three shared cards, ranked as ordinary poker (suits never break ties). In a duel the stronger hand wins the round.
@@ -46,7 +61,8 @@ A card-memory game. Run `/memorypoker opponent:@someone` in a server channel for
 Rules and extras:
 - A duel is best of 5: first to 3 round wins. Drawn rounds count for neither. If it is level after round 5, extra rounds are played until a round leaves someone ahead. Each round is a fresh deal.
 - Solo tells you whether you found the best of the 120 possible picks, and how many of them your hand beat.
-- After the board hides you have 60 seconds to answer, or you forfeit the round. The clock starts when you press **Show me my board**, and each board can only be looked at once.
+- After the board hides you have 30 seconds to lock in, or you forfeit the round. Each board can only be looked at once.
+- The board, shared cards and hands are pictures drawn by the Worker (`/mp/...png`).
 - Both players get the same board, and may pick the same squares. Players need not be online together, and games expire after 24 hours with no activity.
 - Game state is stored in a Durable Object (`MEMORY_POKER`). It needs a new migration (tag `v3`), which `npm run deploy` applies. Run `npm run register` after deploying to add the command.
 

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  cardLabel, startText, boardComponents, hiddenComponents, roundComponents, modalLabel,
-  showId, answerId, nextId, modalId, parseId,
+  cardLabel, startText, boardComponents, hiddenComponents, roundComponents, pickerRows,
+  showId, pickId, lockId, clearId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
 const SPACER = '​';
@@ -33,6 +33,11 @@ test('duel start card names both players, then a spacer, and ends with a spacer 
   assert.match(t, /## How to play:/);
   assert.match(t, /Show me my board/);
   assert.match(t, /best of 5/i);
+  assert.match(t, /Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards\./);
+  assert.match(t, /1\. 16 cards are dealt face up on squares A to P\. You have 20 seconds to memorize them\./);
+  assert.match(t, /2\. The cards turn face down and three shared cards are revealed\./);
+  assert.match(t, /3\. You have 30 seconds to place your two markers on the squares you think make the best hand\./);
+  assert.match(t, /4\. Both hands are revealed\. The stronger poker hand wins the round\./);
 });
 
 test('solo start card has one player-free title and promises to say if you found the best hand', () => {
@@ -165,18 +170,51 @@ test('every text stays well under Discord limits with long mention ids', () => {
   for (const t of all) assert.ok(t.length <= LIMIT, `length ${t.length}`);
 });
 
-test('modal label fits Discord 45 characters', () => {
-  assert.equal(modalLabel, 'Two squares, like C J');
-  assert.ok(modalLabel.length <= 45);
+test('ids round trip action, game, round, selection and letter, and stay under 100 characters', () => {
+  const g = '1234567890123456789';
+  assert.deepEqual(parseId(showId(g, 4)), { action: 'show', gameId: g, round: 4, sel: '', letter: '' });
+  assert.deepEqual(parseId(pickId(g, 12, 'C', 'J')), { action: 'pick', gameId: g, round: 12, sel: 'C', letter: 'J' });
+  assert.deepEqual(parseId(lockId(g, 7, 'CJ')), { action: 'lock', gameId: g, round: 7, sel: 'CJ', letter: '' });
+  assert.deepEqual(parseId(clearId(g, 7)), { action: 'clear', gameId: g, round: 7, sel: '', letter: '' });
+  assert.deepEqual(parseId(nextId(g, 7)), { action: 'next', gameId: g, round: 7, sel: '', letter: '' });
+  for (const id of [showId(g, 999), pickId(g, 999, 'AB', 'P'), lockId(g, 999, 'AB'), clearId(g, 999), nextId(g, 999)]) assert.ok(id.length < 100);
 });
 
-test('ids round trip action, game and round, and stay under 100 characters', () => {
-  const g = '1234567890123456789';
-  assert.deepEqual(parseId(showId(g, 4)), { action: 'show', gameId: g, round: 4 });
-  assert.deepEqual(parseId(answerId(g, 12)), { action: 'answer', gameId: g, round: 12 });
-  assert.deepEqual(parseId(nextId(g, 7)), { action: 'next', gameId: g, round: 7 });
-  assert.deepEqual(parseId(modalId(g, 9)), { action: 'modal', gameId: g, round: 9 });
-  for (const id of [showId(g, 999), answerId(g, 999), nextId(g, 999), modalId(g, 999)]) assert.ok(id.length < 100);
+const buttonsOf = (rows) => rows.flatMap((r) => r.components);
+
+test('the picker is sixteen letter buttons in four rows of four, then Lock in and Clear', () => {
+  const rows = pickerRows('123', 2, '');
+  assert.equal(rows.length, 5);
+  assert.deepEqual(rows.slice(0, 4).map((r) => r.components.map((b) => b.label).join('')), ['ABCD', 'EFGH', 'IJKL', 'MNOP']);
+  assert.deepEqual(rows[4].components.map((b) => b.label), ['Lock in', 'Clear']);
+  assert.ok(rows.every((r) => r.components.length <= 5));
+});
+
+test('nothing is selected at first: Lock in and Clear are disabled', () => {
+  const [lock, clear] = pickerRows('123', 2, '')[4].components;
+  assert.equal(lock.disabled, true);
+  assert.equal(clear.disabled, true);
+});
+
+test('selected squares are highlighted and each button remembers the selection', () => {
+  const rows = pickerRows('123', 2, 'C');
+  const all = buttonsOf(rows.slice(0, 4));
+  assert.equal(all.find((b) => b.label === 'C').style, 1);
+  assert.equal(all.find((b) => b.label === 'D').style, 2);
+  assert.equal(all.find((b) => b.label === 'D').custom_id, pickId('123', 2, 'C', 'D'));
+  assert.equal(rows[4].components[0].disabled, true);
+  assert.equal(rows[4].components[1].disabled, undefined);
+});
+
+test('with two squares selected Lock in is enabled and carries both', () => {
+  const [lock] = pickerRows('123', 2, 'CJ')[4].components;
+  assert.equal(lock.disabled, undefined);
+  assert.equal(lock.custom_id, lockId('123', 2, 'CJ'));
+});
+
+test('the hidden message shows the current selection', () => {
+  assert.match(texts(hiddenComponents(DEAL.shared, 1_700_000_060, ORIGIN, 'CJ')), /Selected: \*\*C \+ J\*\*/);
+  assert.doesNotMatch(texts(hiddenComponents(DEAL.shared, 1_700_000_060, ORIGIN, '')), /Selected/);
 });
 
 test('memorypoker command is guild-only and the opponent is optional', async () => {

@@ -1,14 +1,12 @@
 // Message text and custom ids for Memory Poker. Plain Discord markdown, kept under 2000 characters.
 import { SQUARES, handName } from './pokerRules.js';
-import { WINS_NEEDED, STANDARD_ROUNDS, FLASH_MS } from './pokerGame.js';
+import { WINS_NEEDED, STANDARD_ROUNDS, FLASH_MS, ANSWER_MS } from './pokerGame.js';
 import { imageUrl } from './cardImage.js';
 
 // Discord trims blank lines after a header and at the end of a message, so those gaps use this.
 const SPACER = '​';
 const SUIT_SYMBOL = { S: '♠', H: '♥', D: '♦', C: '♣' };
 const RANK_LABEL = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
-
-export const modalLabel = 'Two squares, like C J';
 
 export const cardLabel = (card) => `${RANK_LABEL[card.rank] ?? card.rank}${SUIT_SYMBOL[card.suit]}`;
 const mention = (id) => `<@${id}>`;
@@ -34,20 +32,23 @@ export function startText(players, round, wins) {
   }
 
   const title = solo ? '# 🃏 Memory Poker' : `# 🃏 Memory Poker: ${mention(players[0])} 🆚 ${mention(players[1])}`;
-  const intro = solo
-    ? '*Memorize the board, pick two squares, and find out whether you found the best poker hand on it.*'
-    : `*Memorize the board, then pick the two squares that make the best poker hand. It is best of ${STANDARD_ROUNDS}, so the first to win ${WINS_NEEDED} rounds takes the duel.*`;
+  const answerSeconds = ANSWER_MS / 1000;
   return [
     title,
     SPACER,
-    intro,
+    '*Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards.*',
     '',
     '## How to play:',
     '',
-    `1. Press **Show me my board**. You get ${seconds} seconds to memorize the 16 cards before they are hidden.`,
-    '2. Three shared cards are revealed.',
-    '3. Pick two squares. Those two cards plus the three shared cards make your hand.',
-    solo ? '4. I tell you whether you found the best hand.' : '4. The stronger poker hand wins the round.',
+    `1. 16 cards are dealt face up on squares A to P. You have ${seconds} seconds to memorize them.`,
+    '2. The cards turn face down and three shared cards are revealed.',
+    `3. You have ${answerSeconds} seconds to place your two markers on the squares you think make the best hand.`,
+    solo
+      ? '4. Your hand is revealed, and you find out whether it was the best one on the board.'
+      : '4. Both hands are revealed. The stronger poker hand wins the round.',
+    '',
+    ...(solo ? [] : [`-# Best of ${STANDARD_ROUNDS}: the first to win ${WINS_NEEDED} rounds takes the duel.`]),
+    'Press **Show me my board** when you are ready.',
     SPACER,
   ].join('\n');
 }
@@ -60,11 +61,36 @@ export const boardComponents = (board, hideAtSec, origin) => [
   gallery(imageUrl(origin, 'board', board)),
 ];
 
-export const hiddenComponents = (shared, deadlineSec, origin) => [
+// `sel` is the squares picked so far, like 'CJ'.
+export const hiddenComponents = (shared, deadlineSec, origin, sel = '') => [
   text('## 🃏 Board hidden\nYour cards are face down, lettered A to P. The three shared cards are on the bottom row.'),
   gallery(imageUrl(origin, 'hidden', shared)),
-  text(`-# Pick your two squares <t:${deadlineSec}:R>`),
+  text(
+    `-# Place your two markers <t:${deadlineSec}:R>` +
+      (sel ? `\nSelected: **${[...sel].join(' + ')}**` : ''),
+  ),
 ];
+
+// Sixteen square buttons (the picks so far are highlighted), then Lock in and Clear.
+export function pickerRows(gameId, round, sel) {
+  const rows = [0, 1, 2, 3].map((r) => ({
+    type: 1,
+    components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => ({
+      type: 2,
+      style: sel.includes(letter) ? 1 : 2,
+      label: letter,
+      custom_id: pickId(gameId, round, sel, letter),
+    })),
+  }));
+  rows.push({
+    type: 1,
+    components: [
+      { type: 2, style: 3, label: 'Lock in', custom_id: lockId(gameId, round, sel), ...(sel.length < 2 && { disabled: true }) },
+      { type: 2, style: 2, label: 'Clear', custom_id: clearId(gameId, round), ...(!sel && { disabled: true }) },
+    ],
+  });
+  return rows;
+}
 
 // A hand is the two picked squares followed by the three shared cards.
 const handImage = (origin, deal, picks) => gallery(imageUrl(origin, 'hand', [...picks.map((i) => deal.board[i]), ...deal.shared]));
@@ -107,12 +133,12 @@ export function roundComponents(players, result, deal, origin) {
 // ── Custom ids ────────────────────────────────────────────────────────────────
 
 export const showId = (gameId, round) => `mp:show:${gameId}:${round}`;
-export const answerId = (gameId, round) => `mp:answer:${gameId}:${round}`;
+export const pickId = (gameId, round, sel, letter) => `mp:pick:${gameId}:${round}:${sel}:${letter}`;
+export const lockId = (gameId, round, sel) => `mp:lock:${gameId}:${round}:${sel}`;
+export const clearId = (gameId, round) => `mp:clear:${gameId}:${round}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;
-export const modalId = (gameId, round) => `mp_modal:${gameId}:${round}`;
 
 export function parseId(customId) {
-  const parts = customId.split(':');
-  if (parts[0] === 'mp_modal') return { action: 'modal', gameId: parts[1], round: Number(parts[2]) };
-  return { action: parts[1], gameId: parts[2], round: Number(parts[3]) };
+  const [, action, gameId, round, sel = '', letter = ''] = customId.split(':');
+  return { action, gameId, round: Number(round), sel, letter };
 }

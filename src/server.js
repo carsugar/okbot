@@ -9,7 +9,7 @@ import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
 import { handleMindMeldCommand, handleMindMeldComponent, handleMindMeldModal } from './mindmeld.js';
 import { cardImageResponse } from './cardRoute.js';
-import { handleMemoryPokerCommand, handleMemoryPokerComponent, handleMemoryPokerModal } from './memorypoker.js';
+import { handleMemoryPokerCommand, handleMemoryPokerComponent } from './memorypoker.js';
 
 export { MindMeldGame } from './mindmeld.js';
 export { RouteStore } from './routeStore.js';
@@ -67,7 +67,6 @@ router.post('/', async (request, env, ctx) => {
   if (interaction.type === 5) {
     if (interaction.data.custom_id.startsWith('mm_modal:')) return handleMindMeldModal(interaction, env);
     if (interaction.data.custom_id.startsWith('le_modal:')) return handleEditorModal(interaction, env, new URL(request.url).origin);
-    if (interaction.data.custom_id.startsWith('mp_modal:')) return handleMemoryPokerModal(interaction, env, new URL(request.url).origin);
     return handleModalSubmit(interaction, env, ctx);
   }
 

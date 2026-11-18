@@ -3,7 +3,7 @@
 import { handFor, compareHands, bestHand, countBeaten } from './pokerRules.js';
 
 export const FLASH_MS = 20_000;
-export const ANSWER_MS = 60_000;
+export const ANSWER_MS = 30_000;
 export const WINS_NEEDED = 3;
 export const STANDARD_ROUNDS = 5;
 

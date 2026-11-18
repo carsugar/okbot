@@ -6,7 +6,7 @@ import {
   enqueue, takeDue, nextAlarmAt,
 } from './pokerGame.js';
 import {
-  startText, boardComponents, hiddenComponents, roundComponents, modalLabel, showId, answerId, nextId, modalId, parseId,
+  startText, boardComponents, hiddenComponents, roundComponents, pickerRows, showId, nextId, parseId,
 } from './memoryPokerMessages.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -52,7 +52,7 @@ export class MemoryPokerGame extends DurableObject {
     return out.result;
   }
 
-  // Read-only gate before the answer pop-up opens. `answer` stays the authority.
+  // Read-only gate before the picker changes. `answer` stays the authority.
   async check(userId, round) {
     const { state } = await this.#load();
     if (!state) return { type: 'expired' };
@@ -65,7 +65,7 @@ export class MemoryPokerGame extends DurableObject {
     if (p.answer !== null) return { type: 'already_answered' };
     if (p.forfeited || (p.deadline !== null && Date.now() > p.deadline)) return { type: 'late' };
     if (p.hiddenAt === null) return { type: 'still_looking' };
-    return { type: 'ok' };
+    return { type: 'ok', shared: state.deal.shared, deadline: p.deadline };
   }
 
   async answer(userId, round, text) {
@@ -119,7 +119,7 @@ export class MemoryPokerGame extends DurableObject {
         pending = enqueue(pending, { ...item, at: out.result.deadline + 1, type: 'deadline' });
         const components = [
           ...hiddenComponents(out.result.shared, seconds(out.result.deadline), meta.origin),
-          row(button(1, 'Enter your two squares', answerId(meta.gameId, current.round))),
+          ...pickerRows(meta.gameId, current.round, ''),
         ];
         effects.push([item, 'PATCH', '/messages/@original', { components, flags: COMPONENTS_V2 }]);
       } else {
@@ -147,7 +147,7 @@ export class MemoryPokerGame extends DurableObject {
     };
   }
 
-  // Interaction tokens last 15 minutes, far longer than the 20 s flash or 60 s answer window.
+  // Interaction tokens last 15 minutes, far longer than the 20 s flash or 30 s answer window.
   async #webhook(item, method, path, body) {
     try {
       await fetch(`${DISCORD_API}/webhooks/${item.appId}/${item.token}${path}`, {
@@ -214,7 +214,7 @@ export async function handleMemoryPokerCommand(interaction, env, origin) {
 
 export async function handleMemoryPokerComponent(interaction, env, origin) {
   const userId = interaction.member.user.id;
-  const { action, gameId, round } = parseId(interaction.data.custom_id);
+  const { action, gameId, round, sel, letter } = parseId(interaction.data.custom_id);
   const stub = gameStub(env, gameId);
 
   if (action === 'show') {
@@ -224,17 +224,22 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     return componentsMessage(boardComponents(result.board, seconds(result.hideAt), origin), EPHEMERAL);
   }
 
-  if (action === 'answer') {
-    const result = await stub.check(userId, round);
-    if (result.type !== 'ok') return refusal(result.type);
+  if (action === 'pick' || action === 'clear') {
+    const view = await stub.check(userId, round);
+    if (view.type !== 'ok') return refusal(view.type);
+    const next = action === 'clear' ? '' : togglePick(sel, letter);
     return new JsonResponse({
-      type: 9,
+      type: 7,
       data: {
-        custom_id: modalId(gameId, round),
-        title: `Memory Poker: Round ${round}`,
-        components: [row({ type: 4, custom_id: 'squares', label: modalLabel, style: 1, required: true, max_length: 12 })],
+        components: [...hiddenComponents(view.shared, seconds(view.deadline), origin, next), ...pickerRows(gameId, round, next)],
+        flags: COMPONENTS_V2,
       },
     });
+  }
+
+  if (action === 'lock') {
+    if (sel.length !== 2) return ephemeral('Pick two squares first.');
+    return answerResponse(await stub.answer(userId, round, `${sel[0]} ${sel[1]}`), gameId, round, sel, origin);
   }
 
   if (action === 'next') {
@@ -247,15 +252,13 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
   return ephemeral('Unknown button.');
 }
 
-export async function handleMemoryPokerModal(interaction, env, origin) {
-  const userId = interaction.member.user.id;
-  const { gameId, round } = parseId(interaction.data.custom_id);
-  const text = interaction.data.components
-    .flatMap((r) => r.components)
-    .find((c) => c.custom_id === 'squares').value;
+// A third pick replaces the oldest one, and picking a chosen square takes it off.
+const togglePick = (sel, letter) => {
+  if (sel.includes(letter)) return sel.replace(letter, '');
+  return (sel + letter).slice(-2);
+};
 
-  const result = await gameStub(env, gameId).answer(userId, round, text);
-
+function answerResponse(result, gameId, round, sel, origin) {
   if (result.roundResult) {
     const { roundResult: r } = result;
     const solo = result.mode === 'solo';
@@ -265,8 +268,12 @@ export async function handleMemoryPokerModal(interaction, env, origin) {
     );
   }
   if (result.type === 'waiting') {
+    // The picker turns into a short note, so the squares cannot be changed after locking in.
     const squares = result.picks.map((i) => SQUARES[i]).join(' + ');
-    return ephemeral(`Locked in **${squares}**. Waiting for your opponent.`);
+    return new JsonResponse({
+      type: 7,
+      data: { components: [{ type: 10, content: `Locked in **${squares}**. Waiting for your opponent.` }], flags: COMPONENTS_V2 },
+    });
   }
   return refusal(result.type);
 }
