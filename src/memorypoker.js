@@ -103,9 +103,12 @@ export class MemoryPokerGame extends DurableObject {
       return;
     }
 
+    // Decide everything and save it first. Network calls let other requests run, so saving
+    // afterwards would overwrite an answer that arrived in the meantime.
     const { due, rest } = takeDue(queue, now);
     let current = state;
     let pending = rest;
+    const effects = [];
     for (const item of due) {
       if (item.type === 'hide') {
         const out = markHidden(current, item.userId, now);
@@ -115,28 +118,28 @@ export class MemoryPokerGame extends DurableObject {
         pending = enqueue(pending, { ...item, at: out.result.deadline + 1, type: 'deadline' });
         const content = hiddenText(out.result.shared, seconds(out.result.deadline));
         const components = [row(button(1, 'Enter your two squares', answerId(meta.gameId, current.round)))];
-        await this.#webhook(item, 'PATCH', `/messages/@original`, { content, components });
+        effects.push([item, 'PATCH', '/messages/@original', { content, components }]);
       } else {
         const out = forfeitExpired(current, now);
         current = out.state;
         if (!out.resolved) continue;
         pending = pending.filter((i) => i.type !== 'deadline');
-        await this.#announce(item, meta.gameId, current, out.resolved);
+        effects.push([item, 'POST', '', this.#announcement(meta.gameId, current, out.resolved)]);
       }
     }
     await this.#save(current, pending);
+    for (const effect of effects) await this.#webhook(...effect);
   }
 
   // Result of a round that ended on a timeout, posted with the timed-out player's fresh token.
-  async #announce(item, gameId, state, result) {
+  #announcement(gameId, state, result) {
     const solo = state.mode === 'solo';
-    const body = {
+    return {
       content: roundText(state.players, result, state.deal),
       components: result.finished ? [] : [nextButton(gameId, result.round, solo)],
       allowed_mentions: { parse: [] },
       ...(solo ? { flags: EPHEMERAL } : {}),
     };
-    await this.#webhook(item, 'POST', '', body);
   }
 
   // Interaction tokens last 15 minutes, far longer than the 20 s flash or 60 s answer window.
