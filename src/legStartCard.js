@@ -8,7 +8,7 @@ const text = (content) => ({ type: 10, content });
 const separator = () => ({ type: 14, divider: true, spacing: 2 });
 
 export function parseLegStart({ leg, departure, destination, money, flightTime }) {
-  const [depName] = departure.split('|').map((s) => s.trim());
+  const [depName, depImage = ''] = departure.split('|').map((s) => s.trim());
   const [dest, site = '', airport = ''] = destination.split('|').map((s) => s.trim());
   const slug = (dest.split(/\s+/)[0] || 'dest').replace(/[^a-z0-9]/gi, '').toLowerCase();
   const rawMoney = money.replace(/^\$/, '').trim();
@@ -16,6 +16,7 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
   return {
     leg,
     departure: depName,
+    departureImage: depImage,
     destination: dest,
     site,
     airport,
@@ -33,6 +34,7 @@ export function legStartEmbed(d, headerImage) {
     text(`# ROUTE INFO\n-# LEG ${d.leg} START`),
     { type: 12, items: [{ media: { url: headerImage } }] },
     text(`Make your way from **${d.departure}** to your next destination, **${d.destination}!**`),
+    ...(d.departureImage ? [{ type: 12, items: [{ media: { url: d.departureImage } }] }] : []),
     separator(),
     text(
       `All teams will be put onto the same, equalizing **${d.flightTime}** to ${d.country}.` +

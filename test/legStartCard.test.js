@@ -89,3 +89,20 @@ test('newSlug is 12 url-safe characters from nine bytes', () => {
   assert.match(newSlug(new Uint8Array(9).fill(255)), /^[A-Za-z0-9_-]{12}$/);
   assert.notEqual(newSlug(new Uint8Array(9).fill(1)), newSlug(new Uint8Array(9).fill(2)));
 });
+
+test('the departure image is parsed from the form', () => {
+  assert.equal(parseLegStart(fields).departureImage, 'https://example.com/dep.png');
+  assert.equal(parseLegStart({ ...fields, departure: 'Cusco' }).departureImage, '');
+});
+
+test('the departure image shows in its own gallery right under the make-your-way line', () => {
+  const parts = legStartEmbed(parseLegStart(fields), IMAGE).component.components;
+  const i = parts.findIndex((c) => c.type === 10 && c.content.startsWith('Make your way'));
+  assert.equal(parts[i + 1].type, 12);
+  assert.equal(parts[i + 1].items[0].media.url, 'https://example.com/dep.png');
+});
+
+test('no departure image means no second gallery', () => {
+  const parts = legStartEmbed(parseLegStart({ ...fields, departure: 'Cusco' }), IMAGE).component.components;
+  assert.equal(parts.filter((c) => c.type === 12).length, 1);
+});
