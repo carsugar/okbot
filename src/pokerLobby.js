@@ -4,7 +4,7 @@ export const LOBBY_MS = 60_000;
 export const BEST_OF_CHOICES = [1, 3, 5];
 
 // The match length starts at a single round; anyone in the lobby can change it.
-export const newLobby = () => ({ spots: [null, null], bestOf: 1 });
+export const newLobby = () => ({ spots: [null, null], bestOf: 1, avatars: {} });
 
 export const setBestOf = (lobby, bestOf) => (BEST_OF_CHOICES.includes(bestOf) ? { ...lobby, bestOf } : lobby);
 

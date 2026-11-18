@@ -77,18 +77,20 @@ export class MemoryPokerGame extends DurableObject {
     return { closesAt: now + LOBBY_MS };
   }
 
-  async join(userId, spot, token) {
+  async join(userId, spot, token, avatar) {
     const { lobby, state, meta } = await this.#load();
     if (!lobby) return { type: state ? 'started' : 'expired' };
     const out = claim(lobby, userId, spot);
     if (out.result.type === 'taken' || out.result.type === 'already_in') return out.result;
 
     const tokens = (await this.ctx.storage.get('lobbyTokens')) ?? {};
-    if (out.result.type === 'left') delete tokens[userId];
-    else tokens[userId] = token;
+    const avatars = { ...(out.lobby.avatars ?? {}) };
+    if (out.result.type === 'left') { delete tokens[userId]; delete avatars[userId]; }
+    else { tokens[userId] = token; if (avatar) avatars[userId] = avatar; }
+    out.lobby = { ...out.lobby, avatars };
     if (out.result.type !== 'full') {
       await this.ctx.storage.put({ lobby: out.lobby, lobbyTokens: tokens });
-      return { type: 'updated', spots: out.lobby.spots, bestOf: out.lobby.bestOf, closesAt: meta.closesAt };
+      return { type: 'updated', spots: out.lobby.spots, bestOf: out.lobby.bestOf, avatars, closesAt: meta.closesAt };
     }
     const now = Date.now();
     const game = newGame(out.lobby.spots, randomDeal(), now, out.lobby.bestOf);
@@ -103,7 +105,7 @@ export class MemoryPokerGame extends DurableObject {
     if (!lobby) return { type: state ? 'started' : 'expired' };
     const next = setBestOf(lobby, bestOf);
     await this.ctx.storage.put({ lobby: next });
-    return { type: 'updated', spots: next.spots, bestOf: next.bestOf, closesAt: meta.closesAt };
+    return { type: 'updated', spots: next.spots, bestOf: next.bestOf, avatars: next.avatars ?? {}, closesAt: meta.closesAt };
   }
 
   async startSolo(userId, gameId, origin, appId, token) {
@@ -368,6 +370,14 @@ const componentsMessage = (components, flags = 0) =>
 const updateMessage = (components) =>
   new JsonResponse({ type: 7, data: { components, flags: COMPONENTS_V2, allowed_mentions: { parse: [] }, attachments: [] } });
 
+// The player's server avatar if they have one, else their account avatar, else the default.
+function avatarUrl({ member, guild_id: guildId }) {
+  const { id, avatar } = member.user;
+  if (member.avatar) return `https://cdn.discordapp.com/guilds/${guildId}/users/${id}/avatars/${member.avatar}.png?size=128`;
+  if (avatar) return `https://cdn.discordapp.com/avatars/${id}/${avatar}.png?size=128`;
+  return `https://cdn.discordapp.com/embed/avatars/${Number((BigInt(id) >> 22n) % 6n)}.png`;
+}
+
 const gameStub = (env, gameId) => env.MEMORY_POKER.get(env.MEMORY_POKER.idFromName(gameId));
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
@@ -392,9 +402,9 @@ export async function handleMemoryPokerComponent(interaction, env, ctx, origin) 
 
   if (action === 'join') {
     const spot = round; // join buttons carry their spot where other ids carry the round
-    const result = await stub.join(userId, spot, interaction.token);
+    const result = await stub.join(userId, spot, interaction.token, avatarUrl(interaction));
     if (result.type === 'already_in') return ephemeral(`You are already Player ${result.spot + 1}. Press your own button again to give the spot up.`);
-    if (result.type === 'updated') return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt), result.bestOf));
+    if (result.type === 'updated') return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt), result.bestOf, result.avatars));
     if (result.type === 'started') return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, 1, result.wins, result.bestOf));
     return refusal(result.type);
   }
@@ -402,7 +412,7 @@ export async function handleMemoryPokerComponent(interaction, env, ctx, origin) 
   if (action === 'mode') {
     const result = await stub.setBestOf(Number(interaction.data.values[0]));
     if (result.type !== 'updated') return refusal(result.type);
-    return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt), result.bestOf));
+    return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt), result.bestOf, result.avatars));
   }
 
   if (action === 'start') {

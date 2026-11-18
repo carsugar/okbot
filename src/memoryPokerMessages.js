@@ -39,11 +39,17 @@ const howToText = (solo) => {
 
 const MATCH_LABEL = { 1: 'Single round', 3: 'Best of 3', 5: 'Best of 5' };
 
+// A taken spot shows the player's avatar beside their name; an open one is just text.
+const spotPart = (i, id, avatar) =>
+  id && avatar
+    ? { type: 9, components: [text(`Player ${i + 1}: ${mention(id)}`)], accessory: { type: 11, media: { url: avatar } } }
+    : text(`Player ${i + 1}: ${spotLabel(id)}`);
+
 const gap = { type: 14, divider: false, spacing: 2 };
 
 // The instructions, the match length, who holds each spot right above the join buttons, and
 // last the time left. Gaps keep the dropdown and the buttons apart.
-export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
+export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1, avatars = {}) {
   return [
     text(howToText(false)),
     {
@@ -56,7 +62,7 @@ export function lobbyComponents(gameId, spots, closesAtSec, bestOf = 1) {
       }],
     },
     gap,
-    text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}`),
+    ...spots.map((id, i) => spotPart(i, id, avatars[id])),
     {
       type: 1,
       components: [button(1, 'Join as Player 1', joinId(gameId, 0)), button(1, 'Join as Player 2', joinId(gameId, 1))],

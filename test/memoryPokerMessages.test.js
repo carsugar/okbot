@@ -23,7 +23,7 @@ test('cardLabel shows rank and suit symbol', () => {
 });
 
 const GAME = '1234567890123456789';
-const flatTexts = (parts) => parts.flatMap((c) => (c.type === 10 ? [c.content] : [])).join('\n');
+const flatTexts = (parts) => parts.flatMap((c) => (c.type === 10 ? [c.content] : c.type === 9 ? c.components.map((t) => t.content) : [])).join('\n');
 const rowButtons = (parts) => parts.filter((c) => c.type === 1).flatMap((r) => r.components);
 
 test('the lobby carries the instructions with the exact timings', () => {
@@ -284,7 +284,7 @@ test('the lobby selector follows the chosen match length, with no rules sentence
 
 test('the lobby order is dropdown, then the spots right above the join buttons, then the closing time last, with gaps between', () => {
   const kinds = lobbyComponents(GAME, [null, null], 1_700_000_060).map((c) => (c.type === 1 ? `row:${c.components[0].type}` : c.type));
-  assert.deepEqual(kinds, [10, 'row:3', 14, 10, 'row:2', 14, 10]);
+  assert.deepEqual(kinds, [10, 'row:3', 14, 10, 10, 'row:2', 14, 10]);
   const last = lobbyComponents(GAME, [null, null], 1_700_000_060).at(-1);
   assert.match(last.content, /Lobby closes <t:1700000060:R>/);
 });
@@ -318,4 +318,14 @@ test('a press is worked out from the picker message itself', () => {
 test('a message that is not a picker gives no guess', () => {
   assert.equal(nextPicker(undefined, '123', 2, 'C', 'https://x.dev'), null);
   assert.equal(nextPicker({ components: [], attachments: [] }, '123', 2, 'C', 'https://x.dev'), null);
+});
+
+test('a player who joined shows their avatar beside their name; an open spot is plain text', () => {
+  const parts = lobbyComponents(GAME, [A, null], 1, 1, { [A]: 'https://cdn.example/a.png' });
+  const section = parts.find((c) => c.type === 9);
+  assert.equal(section.accessory.type, 11);
+  assert.equal(section.accessory.media.url, 'https://cdn.example/a.png');
+  assert.equal(section.components[0].content, `Player 1: <@${A}>`);
+  assert.equal(parts.filter((c) => c.type === 9).length, 1);
+  assert.ok(parts.some((c) => c.type === 10 && c.content === 'Player 2: open'));
 });
