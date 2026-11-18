@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  cardLabel, startText, boardText, hiddenText, roundText, modalLabel,
+  cardLabel, startText, boardComponents, hiddenComponents, roundComponents, modalLabel,
   showId, answerId, nextId, modalId, parseId,
 } from '../src/memoryPokerMessages.js';
 
@@ -56,24 +56,23 @@ test('later solo rounds are a new board', () => {
   assert.match(startText([A], 2, { [A]: 0 }), /^# 🃏 New board\n/);
 });
 
-test('board text lists all 16 squares with their cards in a four-row block and a countdown', () => {
-  const t = boardText(DEAL.board, 1_700_000_000);
-  assert.match(t, /## 🃏 Memorize the board/);
-  assert.ok(t.includes('<t:1700000000:R>'));
-  const block = t.match(/```\n([\s\S]*?)\n```/)[1].split('\n');
-  assert.equal(block.length, 4);
-  assert.ok(block[0].startsWith('A 4♠'));
-  assert.ok(block[3].includes('P 3♣'));
-  for (const letter of 'ABCDEFGHIJKLMNOP') assert.ok(t.includes(`${letter} `), letter);
-  assert.ok(block[3].includes('M 10♣'));
+const ORIGIN = 'https://okbot.example.dev';
+const texts = (parts) => parts.filter((c) => c.type === 10).map((c) => c.content).join('\n');
+const images = (parts) => parts.filter((c) => c.type === 12).map((c) => c.items[0].media.url);
+const boardUrl = `${ORIGIN}/mp/board/4S4HKHKC2D3D5H9CJDQC7S8HTC6D2S3C.png`;
+
+test('board message is a title with a countdown and the board picture', () => {
+  const parts = boardComponents(DEAL.board, 1_700_000_000, ORIGIN);
+  assert.match(texts(parts), /## 🃏 Memorize the board/);
+  assert.ok(texts(parts).includes('<t:1700000000:R>'));
+  assert.deepEqual(images(parts), [boardUrl]);
 });
 
-test('hidden text lists the three shared cards and the answer deadline', () => {
-  const t = hiddenText(DEAL.shared, 1_700_000_060);
-  assert.match(t, /## 🃏 Board hidden/);
-  assert.ok(t.includes('K♠  K♦  2♥'));
-  assert.ok(t.includes('<t:1700000060:R>'));
-  assert.equal(t.split('\n').at(-1), SPACER);
+test('hidden message shows the three shared cards as a picture and the answer deadline', () => {
+  const parts = hiddenComponents(DEAL.shared, 1_700_000_060, ORIGIN);
+  assert.match(texts(parts), /## 🃏 Board hidden/);
+  assert.ok(texts(parts).includes('<t:1700000060:R>'));
+  assert.deepEqual(images(parts), [`${ORIGIN}/mp/shared/KSKD2H.png`]);
 });
 
 const duelResult = (over = {}) => ({
@@ -84,36 +83,40 @@ const duelResult = (over = {}) => ({
   ...over,
 });
 
-test('a duel round shows each hand with its squares and cards, the winner and the score', () => {
-  const t = roundText([A, B], duelResult(), DEAL);
+test('a duel round shows each hand name and squares, a hand picture each, the winner and the score', () => {
+  const parts = roundComponents([A, B], duelResult(), DEAL, ORIGIN);
+  const t = texts(parts);
   assert.match(t, /## 🃏 Round 2/);
-  assert.ok(t.includes(`<@${A}>`) && t.includes('**Four of a kind**'));
-  assert.ok(t.includes('C K♥ + D K♣ with K♠ K♦ 2♥'));
-  assert.ok(t.includes('A 4♠ + B 4♥ with K♠ K♦ 2♥'));
-  assert.ok(t.includes('**Two pair**'));
+  assert.ok(t.includes(`<@${A}> · **Four of a kind** · C + D`));
+  assert.ok(t.includes(`<@${B}> · **Two pair** · A + B`));
+  assert.deepEqual(images(parts), [`${ORIGIN}/mp/hand/KHKCKSKD2H.png`, `${ORIGIN}/mp/hand/4S4HKSKD2H.png`]);
   assert.match(t, new RegExp(`## 🏆 <@${A}> takes the round`));
   assert.ok(t.includes(`Score: <@${A}> 1 · <@${B}> 0 · first to 3`));
-  assert.equal(t.split('\n').at(-1), SPACER);
+});
+
+test('each player picture sits right under that player heading', () => {
+  const parts = roundComponents([A, B], duelResult(), DEAL, ORIGIN);
+  const at = parts.findIndex((c) => c.type === 10 && c.content.includes(`<@${A}> ·`));
+  assert.equal(parts[at + 1].type, 12);
 });
 
 test('a drawn round says draw', () => {
-  const t = roundText([A, B], duelResult({ outcome: 'draw', winner: null, hands: { [A]: hand(2, [13, 4, 2]), [B]: hand(2, [13, 4, 2]) } }), DEAL);
+  const t = texts(roundComponents([A, B], duelResult({ outcome: 'draw', winner: null, hands: { [A]: hand(2, [13, 4, 2]), [B]: hand(2, [13, 4, 2]) } }), DEAL, ORIGIN));
   assert.match(t, /## 🤝 Draw/);
 });
 
-test('a forfeited player is shown as out of time instead of cards', () => {
-  const t = roundText([A, B], duelResult({
+test('a forfeited player is shown as out of time with no picture', () => {
+  const parts = roundComponents([A, B], duelResult({
     hands: { [A]: hand(7, [13, 2]), [B]: null }, picks: { [A]: [2, 3], [B]: null }, forfeited: [B],
-  }), DEAL);
-  assert.ok(t.includes(`<@${B}> · ran out of time`));
-  assert.doesNotMatch(t, /A 4♠/);
+  }), DEAL, ORIGIN);
+  assert.ok(texts(parts).includes(`<@${B}> · ran out of time`));
+  assert.equal(images(parts).length, 1);
 });
 
-test('a finished match announces the winner and the score, with no button spacer', () => {
-  const t = roundText([A, B], duelResult({ round: 4, wins: { [A]: 3, [B]: 1 }, finished: true, matchWinner: A }), DEAL);
+test('a finished match announces the winner and the score, without the next-round score line', () => {
+  const t = texts(roundComponents([A, B], duelResult({ round: 4, wins: { [A]: 3, [B]: 1 }, finished: true, matchWinner: A }), DEAL, ORIGIN));
   assert.match(t, new RegExp(`# 🏆 <@${A}> wins the match, 3 to 1`));
   assert.doesNotMatch(t, /first to 3/);
-  assert.notEqual(t.split('\n').at(-1), SPACER);
 });
 
 const soloResult = (found) => ({
@@ -128,37 +131,38 @@ const soloResult = (found) => ({
   },
 });
 
-test('solo says you found the best hand', () => {
-  const t = roundText([A], soloResult(true), DEAL);
-  assert.match(t, /## 🃏 You found the best hand!/);
-  assert.ok(t.includes('C K♥ + D K♣ with K♠ K♦ 2♥'));
-  assert.equal(t.split('\n').at(-1), SPACER);
+test('solo says you found the best hand, with a picture of it', () => {
+  const parts = roundComponents([A], soloResult(true), DEAL, ORIGIN);
+  assert.match(texts(parts), /## 🃏 You found the best hand!/);
+  assert.deepEqual(images(parts), [`${ORIGIN}/mp/hand/KHKCKSKD2H.png`]);
 });
 
-test('solo shows your pick, the best pick and how many of the 120 you beat', () => {
-  const t = roundText([A], soloResult(false), DEAL);
+test('solo shows your pick and the best pick, each with a picture, and how many of the 120 you beat', () => {
+  const parts = roundComponents([A], soloResult(false), DEAL, ORIGIN);
+  const t = texts(parts);
   assert.match(t, /## 🃏 Not quite/);
   assert.ok(t.includes('**A + B**') && t.includes('**Two pair**'));
   assert.ok(t.includes('**C + D**') && t.includes('**Four of a kind**'));
   assert.ok(t.includes('beat 87 of the 120'));
+  assert.deepEqual(images(parts), [`${ORIGIN}/mp/hand/4S4HKSKD2H.png`, `${ORIGIN}/mp/hand/KHKCKSKD2H.png`]);
 });
 
 test('a solo forfeit says time ran out', () => {
-  const t = roundText([A], { ...soloResult(false), hands: { [A]: null }, picks: { [A]: null }, forfeited: [A], analysis: null }, DEAL);
+  const t = texts(roundComponents([A], { ...soloResult(false), hands: { [A]: null }, picks: { [A]: null }, forfeited: [A], analysis: null }, DEAL, ORIGIN));
   assert.match(t, /## 🃏 Out of time/);
 });
 
-test('every text stays well under the 2000 character limit with long mention ids', () => {
+test('every text stays well under Discord limits with long mention ids', () => {
   const players = ['9'.repeat(20), '8'.repeat(20)];
   const worst = duelResult({ wins: { [players[0]]: 2, [players[1]]: 2 }, winner: players[0] });
-  const texts = [
+  const all = [
     startText(players, 1, { [players[0]]: 0, [players[1]]: 0 }),
     startText(players, 40, { [players[0]]: 9, [players[1]]: 9 }),
-    boardText(DEAL.board, 1_700_000_000),
-    hiddenText(DEAL.shared, 1_700_000_060),
-    roundText(players, { ...worst, hands: { [players[0]]: hand(7, [13, 2]), [players[1]]: hand(2, [13, 4, 2]) }, picks: { [players[0]]: [2, 3], [players[1]]: [0, 1] } }, DEAL),
+    texts(boardComponents(DEAL.board, 1_700_000_000, ORIGIN)),
+    texts(hiddenComponents(DEAL.shared, 1_700_000_060, ORIGIN)),
+    texts(roundComponents(players, { ...worst, hands: { [players[0]]: hand(7, [13, 2]), [players[1]]: hand(2, [13, 4, 2]) }, picks: { [players[0]]: [2, 3], [players[1]]: [0, 1] } }, DEAL, ORIGIN)),
   ];
-  for (const t of texts) assert.ok(t.length <= LIMIT, `length ${t.length}`);
+  for (const t of all) assert.ok(t.length <= LIMIT, `length ${t.length}`);
 });
 
 test('modal label fits Discord 45 characters', () => {

@@ -6,11 +6,12 @@ import {
   enqueue, takeDue, nextAlarmAt,
 } from './pokerGame.js';
 import {
-  startText, boardText, hiddenText, roundText, modalLabel, showId, answerId, nextId, modalId, parseId,
+  startText, boardComponents, hiddenComponents, roundComponents, modalLabel, showId, answerId, nextId, modalId, parseId,
 } from './memoryPokerMessages.js';
 
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
+const COMPONENTS_V2 = 1 << 15;
 const DISCORD_API = 'https://discord.com/api/v10';
 
 const randomDeal = () => deal(() => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32);
@@ -35,8 +36,8 @@ export class MemoryPokerGame extends DurableObject {
     await this.ctx.storage.setAlarm(nextAlarmAt(queue, state.updatedAt + EXPIRY_MS));
   }
 
-  async start(players, gameId) {
-    await this.ctx.storage.put('meta', { gameId });
+  async start(players, gameId, origin) {
+    await this.ctx.storage.put('meta', { gameId, origin });
     await this.#save(newGame(players, randomDeal(), Date.now()), []);
   }
 
@@ -116,15 +117,17 @@ export class MemoryPokerGame extends DurableObject {
         if (out.result.type !== 'ok') continue;
         // One millisecond past the deadline, because an answer exactly at the deadline still counts.
         pending = enqueue(pending, { ...item, at: out.result.deadline + 1, type: 'deadline' });
-        const content = hiddenText(out.result.shared, seconds(out.result.deadline));
-        const components = [row(button(1, 'Enter your two squares', answerId(meta.gameId, current.round)))];
-        effects.push([item, 'PATCH', '/messages/@original', { content, components }]);
+        const components = [
+          ...hiddenComponents(out.result.shared, seconds(out.result.deadline), meta.origin),
+          row(button(1, 'Enter your two squares', answerId(meta.gameId, current.round))),
+        ];
+        effects.push([item, 'PATCH', '/messages/@original', { components, flags: COMPONENTS_V2 }]);
       } else {
         const out = forfeitExpired(current, now);
         current = out.state;
         if (!out.resolved) continue;
         pending = pending.filter((i) => i.type !== 'deadline');
-        effects.push([item, 'POST', '', this.#announcement(meta.gameId, current, out.resolved)]);
+        effects.push([item, 'POST', '', this.#announcement(meta, current, out.resolved)]);
       }
     }
     await this.#save(current, pending);
@@ -132,13 +135,15 @@ export class MemoryPokerGame extends DurableObject {
   }
 
   // Result of a round that ended on a timeout, posted with the timed-out player's fresh token.
-  #announcement(gameId, state, result) {
+  #announcement(meta, state, result) {
     const solo = state.mode === 'solo';
     return {
-      content: roundText(state.players, result, state.deal),
-      components: result.finished ? [] : [nextButton(gameId, result.round, solo)],
+      components: [
+        ...roundComponents(state.players, result, state.deal, meta.origin),
+        ...(result.finished ? [] : [nextButton(meta.gameId, result.round, solo)]),
+      ],
       allowed_mentions: { parse: [] },
-      ...(solo ? { flags: EPHEMERAL } : {}),
+      flags: COMPONENTS_V2 | (solo ? EPHEMERAL : 0),
     };
   }
 
@@ -177,11 +182,15 @@ const refusal = (type) => ephemeral(REFUSALS[type] ?? 'Something went wrong. Sta
 const message = (content, components, flags = 0) =>
   new JsonResponse({ type: 4, data: { content, components, flags, allowed_mentions: { parse: [] } } });
 
+// Messages built from components only (no plain text), so the card pictures can be shown.
+const componentsMessage = (components, flags = 0) =>
+  new JsonResponse({ type: 4, data: { components, flags: COMPONENTS_V2 | flags, allowed_mentions: { parse: [] } } });
+
 const gameStub = (env, gameId) => env.MEMORY_POKER.get(env.MEMORY_POKER.idFromName(gameId));
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
-export async function handleMemoryPokerCommand(interaction, env) {
+export async function handleMemoryPokerCommand(interaction, env, origin) {
   const invokerId = interaction.member.user.id;
   const opponentId = interaction.data.options?.find((o) => o.name === 'opponent')?.value;
   if (opponentId === invokerId) return ephemeral('Pick someone else, or leave the opponent empty to play solo.');
@@ -189,7 +198,7 @@ export async function handleMemoryPokerCommand(interaction, env) {
 
   const players = opponentId ? [invokerId, opponentId] : [invokerId];
   const gameId = interaction.id;
-  await gameStub(env, gameId).start(players, gameId);
+  await gameStub(env, gameId).start(players, gameId, origin);
   const wins = Object.fromEntries(players.map((p) => [p, 0]));
   return new JsonResponse({
     type: 4,
@@ -203,7 +212,7 @@ export async function handleMemoryPokerCommand(interaction, env) {
   });
 }
 
-export async function handleMemoryPokerComponent(interaction, env) {
+export async function handleMemoryPokerComponent(interaction, env, origin) {
   const userId = interaction.member.user.id;
   const { action, gameId, round } = parseId(interaction.data.custom_id);
   const stub = gameStub(env, gameId);
@@ -212,7 +221,7 @@ export async function handleMemoryPokerComponent(interaction, env) {
     const appId = interaction.application_id ?? env.DISCORD_APPLICATION_ID;
     const result = await stub.show(userId, round, interaction.token, appId);
     if (result.type !== 'ok') return refusal(result.type);
-    return ephemeral(boardText(result.board, seconds(result.hideAt)));
+    return componentsMessage(boardComponents(result.board, seconds(result.hideAt), origin), EPHEMERAL);
   }
 
   if (action === 'answer') {
@@ -238,7 +247,7 @@ export async function handleMemoryPokerComponent(interaction, env) {
   return ephemeral('Unknown button.');
 }
 
-export async function handleMemoryPokerModal(interaction, env) {
+export async function handleMemoryPokerModal(interaction, env, origin) {
   const userId = interaction.member.user.id;
   const { gameId, round } = parseId(interaction.data.custom_id);
   const text = interaction.data.components
@@ -250,9 +259,8 @@ export async function handleMemoryPokerModal(interaction, env) {
   if (result.roundResult) {
     const { roundResult: r } = result;
     const solo = result.mode === 'solo';
-    return message(
-      roundText(result.players, r, result.deal),
-      r.finished ? [] : [nextButton(gameId, r.round, solo)],
+    return componentsMessage(
+      [...roundComponents(result.players, r, result.deal, origin), ...(r.finished ? [] : [nextButton(gameId, r.round, solo)])],
       solo ? EPHEMERAL : 0,
     );
   }

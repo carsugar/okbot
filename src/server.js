@@ -8,6 +8,7 @@ import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
 import { handleMindMeldCommand, handleMindMeldComponent, handleMindMeldModal } from './mindmeld.js';
+import { cardImageResponse } from './cardRoute.js';
 import { handleMemoryPokerCommand, handleMemoryPokerComponent, handleMemoryPokerModal } from './memorypoker.js';
 
 export { MindMeldGame } from './mindmeld.js';
@@ -34,6 +35,8 @@ router.get('/route/:slug', async (request, env) => {
   });
 });
 
+router.get('/mp/:kind/:file', (request, env, ctx) => cardImageResponse(request, ctx));
+
 router.post('/', async (request, env, ctx) => {
   const { isValid, interaction } = await verifyDiscordRequest(request, env);
   if (!isValid || !interaction) {
@@ -47,21 +50,21 @@ router.post('/', async (request, env, ctx) => {
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data.name === 'mindmeld') return handleMindMeldCommand(interaction, env);
     if (interaction.data.name === 'test_template') return handleTestTemplateCommand(interaction, env, new URL(request.url).origin);
-    if (interaction.data.name === 'memorypoker') return handleMemoryPokerCommand(interaction, env);
+    if (interaction.data.name === 'memorypoker') return handleMemoryPokerCommand(interaction, env, new URL(request.url).origin);
     return handleCommand(interaction);
   }
 
   if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
     if (interaction.data.custom_id.startsWith('mm:')) return handleMindMeldComponent(interaction, env);
     if (interaction.data.custom_id.startsWith('le:')) return handleLegEditorComponent(interaction, env, ctx, new URL(request.url).origin);
-    if (interaction.data.custom_id.startsWith('mp:')) return handleMemoryPokerComponent(interaction, env);
+    if (interaction.data.custom_id.startsWith('mp:')) return handleMemoryPokerComponent(interaction, env, new URL(request.url).origin);
     return handleComponent(interaction);
   }
 
   if (interaction.type === 5) {
     if (interaction.data.custom_id.startsWith('mm_modal:')) return handleMindMeldModal(interaction, env);
     if (interaction.data.custom_id.startsWith('le_modal:')) return handleLegEditorModal(interaction, env, new URL(request.url).origin);
-    if (interaction.data.custom_id.startsWith('mp_modal:')) return handleMemoryPokerModal(interaction, env);
+    if (interaction.data.custom_id.startsWith('mp_modal:')) return handleMemoryPokerModal(interaction, env, new URL(request.url).origin);
     return handleModalSubmit(interaction, env, ctx);
   }
 

@@ -10,6 +10,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@resvg/resvg-wasm": "^2.6.2",
     "discord-interactions": "^4.0.0",
     "itty-router": "^5.0.9",
     "wink-lemmatizer": "^3.0.4"

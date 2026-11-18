@@ -1,6 +1,7 @@
 // Message text and custom ids for Memory Poker. Plain Discord markdown, kept under 2000 characters.
 import { SQUARES, handName } from './pokerRules.js';
 import { WINS_NEEDED, STANDARD_ROUNDS, FLASH_MS } from './pokerGame.js';
+import { imageUrl } from './cardImage.js';
 
 // Discord trims blank lines after a header and at the end of a message, so those gaps use this.
 const SPACER = '​';
@@ -12,9 +13,6 @@ export const modalLabel = 'Two squares, like C J';
 export const cardLabel = (card) => `${RANK_LABEL[card.rank] ?? card.rank}${SUIT_SYMBOL[card.suit]}`;
 const mention = (id) => `<@${id}>`;
 const squaresLabel = ([i, j]) => `${SQUARES[i]} + ${SQUARES[j]}`;
-const sharedLabel = (shared) => shared.map(cardLabel).join(' ');
-const squareCards = (deal, picks) =>
-  `${picks.map((i) => `${SQUARES[i]} ${cardLabel(deal.board[i])}`).join(' + ')} with ${sharedLabel(deal.shared)}`;
 
 export function startText(players, round, wins) {
   const solo = players.length === 1;
@@ -54,60 +52,56 @@ export function startText(players, round, wins) {
   ].join('\n');
 }
 
-export function boardText(board, hideAtSec) {
-  const cell = (i) => `${SQUARES[i]} ${cardLabel(board[i]).padEnd(3)}`;
-  const rows = [0, 1, 2, 3].map((r) => [0, 1, 2, 3].map((c) => cell(r * 4 + c)).join('   ').trimEnd());
-  return ['## 🃏 Memorize the board', `-# Hides <t:${hideAtSec}:R>`, '', '```', ...rows, '```'].join('\n');
-}
+const text = (content) => ({ type: 10, content });
+const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });
 
-export function hiddenText(shared, deadlineSec) {
-  return [
-    '## 🃏 Board hidden',
-    `Shared cards: **${shared.map(cardLabel).join('  ')}**`,
-    `-# Pick your two squares <t:${deadlineSec}:R>`,
-    SPACER,
-  ].join('\n');
-}
+export const boardComponents = (board, hideAtSec, origin) => [
+  text(`## 🃏 Memorize the board\n-# Hides <t:${hideAtSec}:R>`),
+  gallery(imageUrl(origin, 'board', board)),
+];
 
-const playerBlock = (deal, result, id) => {
-  if (result.picks[id] === null) return [`### ${mention(id)} · ran out of time`];
-  return [`### ${mention(id)} · **${handName(result.hands[id])}**`, squareCards(deal, result.picks[id])];
-};
+export const hiddenComponents = (shared, deadlineSec, origin) => [
+  text('## 🃏 Board hidden\nThe shared cards:'),
+  gallery(imageUrl(origin, 'shared', shared)),
+  text(`-# Pick your two squares <t:${deadlineSec}:R>`),
+];
 
-function soloText(deal, result) {
+// A hand is the two picked squares followed by the three shared cards.
+const handImage = (origin, deal, picks) => gallery(imageUrl(origin, 'hand', [...picks.map((i) => deal.board[i]), ...deal.shared]));
+
+// A heading line, then that hand's picture.
+const handParts = (origin, deal, heading, picks) => [text(heading), handImage(origin, deal, picks)];
+
+const playerParts = (origin, deal, result, id) =>
+  result.picks[id] === null
+    ? [text(`### ${mention(id)} · ran out of time`)]
+    : handParts(origin, deal, `### ${mention(id)} · **${handName(result.hands[id])}** · ${squaresLabel(result.picks[id])}`, result.picks[id]);
+
+function soloParts(origin, deal, result) {
   const a = result.analysis;
-  if (!a) return ['## 🃏 Out of time', 'You did not pick in time.', SPACER].join('\n');
-  const entry = (label, e) => [`${label} **${squaresLabel(e.picks)}** · **${handName(e.hand)}**`, squareCards(deal, e.picks)];
+  if (!a) return [text('## 🃏 Out of time\nYou did not pick in time.')];
+  const entry = (label, e) => handParts(origin, deal, `${label} **${squaresLabel(e.picks)}** · **${handName(e.hand)}**`, e.picks);
   if (a.found) {
-    return [
-      '## 🃏 You found the best hand!',
-      ...entry('You picked', a.yours),
-      '-# No other pick on this board beats it.',
-      SPACER,
-    ].join('\n');
+    return [text('## 🃏 You found the best hand!'), ...entry('You picked', a.yours), text('-# No other pick on this board beats it.')];
   }
   return [
-    '## 🃏 Not quite',
+    text('## 🃏 Not quite'),
     ...entry('You picked', a.yours),
-    '',
     ...entry('The best was', a.best),
-    `-# Your hand beat ${a.beaten} of the ${a.total} possible picks.`,
-    SPACER,
-  ].join('\n');
+    text(`-# Your hand beat ${a.beaten} of the ${a.total} possible picks.`),
+  ];
 }
 
-export function roundText(players, result, deal) {
-  if (result.outcome === 'solo') return soloText(deal, result);
+export function roundComponents(players, result, deal, origin) {
+  if (result.outcome === 'solo') return soloParts(origin, deal, result);
   const [a, b] = players;
   const verdict = result.outcome === 'draw' ? '## 🤝 Draw' : `## 🏆 ${mention(result.winner)} takes the round`;
-  const lines = [`## 🃏 Round ${result.round}`, '', ...playerBlock(deal, result, a), '', ...playerBlock(deal, result, b), '', verdict];
+  const parts = [text(`## 🃏 Round ${result.round}`), ...playerParts(origin, deal, result, a), ...playerParts(origin, deal, result, b)];
   if (result.finished) {
     const loser = result.matchWinner === a ? b : a;
-    lines.push('', `# 🏆 ${mention(result.matchWinner)} wins the match, ${result.wins[result.matchWinner]} to ${result.wins[loser]}`);
-    return lines.join('\n');
+    return [...parts, text(`${verdict}\n# 🏆 ${mention(result.matchWinner)} wins the match, ${result.wins[result.matchWinner]} to ${result.wins[loser]}`)];
   }
-  lines.push(`-# Score: ${mention(a)} ${result.wins[a]} · ${mention(b)} ${result.wins[b]} · first to ${WINS_NEEDED}`, SPACER);
-  return lines.join('\n');
+  return [...parts, text(`${verdict}\n-# Score: ${mention(a)} ${result.wins[a]} · ${mention(b)} ${result.wins[b]} · first to ${WINS_NEEDED}`)];
 }
 
 // ── Custom ids ────────────────────────────────────────────────────────────────
