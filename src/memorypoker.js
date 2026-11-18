@@ -124,7 +124,8 @@ export class MemoryPokerGame extends DurableObject {
     const resolved = out.result.roundResult;
     if (out.state !== state) {
       // A resolved round has no answer windows left to police.
-      await this.#save(out.state, resolved ? queue.filter((i) => i.type !== 'deadline') : queue);
+      // The pickers are removed a moment later, once this press has been answered.
+      await this.#save(out.state, resolved ? [...queue.filter((i) => i.type !== 'deadline'), { at: Date.now() + 1000, type: 'close' }] : queue);
     }
     if (!['marked', 'need_two', 'waiting', 'resolved'].includes(type)) return { type };
 
@@ -133,8 +134,7 @@ export class MemoryPokerGame extends DurableObject {
       if (resolved) await this.#showResult(meta, out.state, resolved, live);
       else await this.#patch(live?.token, this.#hiddenParts(meta, out.state), meta.appId, live?.messageId ?? '@original');
     }
-    // Once the round is decided, the other player's private grid becomes a short note.
-    if (resolved) await this.#closePickers(meta, out.state, userId);
+    if (resolved) return { type };
     return { type, view: this.#pickerView(meta, out.state, userId) };
   }
 
@@ -215,6 +215,8 @@ export class MemoryPokerGame extends DurableObject {
         pending = enqueue(pending, { at: deadline + 1, type: 'deadline' });
         edits.push(this.#hiddenParts(meta, current));
         openPickers = true;
+      } else if (item.type === 'close') {
+        closePickers = true;
       } else if (item.type === 'deadline') {
         const out = forfeitExpired(current, now);
         current = out.state;
@@ -230,7 +232,7 @@ export class MemoryPokerGame extends DurableObject {
       else await this.#patch(liveNow?.token, edit, meta.appId, liveNow?.messageId ?? '@original');
     }
     if (openPickers) await this.#openPickers(meta, current);
-    if (closePickers) await this.#closePickers(meta, current, null);
+    if (closePickers) await this.#closePickers();
   }
 
   // The round is decided. In a duel the result goes in a new message at the bottom, because
@@ -261,17 +263,20 @@ export class MemoryPokerGame extends DurableObject {
     await this.ctx.storage.put('pickers', pickers);
   }
 
-  async #closePickers(meta, state, exceptUserId) {
+  // Take the private pickers away. Their messages are only visible to their player, so this
+  // leaves nothing behind.
+  async #closePickers() {
+    const { meta } = await this.#load();
     const pickers = (await this.ctx.storage.get('pickers')) ?? {};
-    for (const [id, picker] of Object.entries(pickers)) {
-      if (id !== exceptUserId) await this.#patch(picker.token, this.#pickerView(meta, state, id), meta.appId, picker.messageId);
-    }
+    const api = this.env.DISCORD_API ?? DISCORD_API;
+    await Promise.all(Object.values(pickers).map((p) =>
+      fetch(`${api}/webhooks/${meta.appId}/${p.token}/messages/${p.messageId}`, { method: 'DELETE' }).catch(() => {})));
+    await this.ctx.storage.delete('pickers');
   }
 
   // The private grid for one player right now: the grid, or a note once they are done.
   #pickerView(meta, state, userId) {
     const p = state.per[userId];
-    if (!state.roundOpen) return [text('This round is over. The result is posted in the channel.')];
     if (p.answer) return [text(`Locked in **${p.answer.map((i) => SQUARES[i]).join(' + ')}**. Waiting for your opponent.`)];
     if (p.forfeited) return [text('Time ran out for this round.')];
     const markers = p.markers.map((i) => SQUARES[i]).join('');
@@ -411,6 +416,8 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     const result = await stub.mark(userId, round, action === 'plock' ? '' : letter);
     // The grid is edited in place, so a press never adds a message.
     if (result.view) return updateMessage(result.view, interaction.message);
+    // The round just ended: the picker has been removed, so there is nothing to show.
+    if (result.type === 'resolved') return new JsonResponse({ type: 6 });
     // A player who is already done just presses on quietly.
     if (['already_answered', 'round_over', 'late', 'finished'].includes(result.type)) return new JsonResponse({ type: 6 });
     return refusal(result.type);
