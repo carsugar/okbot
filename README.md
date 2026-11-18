@@ -68,6 +68,7 @@ Rules and extras:
 
 ## Notes
 
+- `public/img/money.png` and `plane.png` are Twemoji graphics (c) Twitter, Inc and other contributors, licensed CC-BY 4.0 (https://github.com/jdecked/twemoji).
 - Carl-bot deprecated `!tag add`, and slash commands can't be pasted. Output uses the pasteable mention form (`<@235148962103951360> tag + ...`). Tags are still invoked with the `!` prefix.
 - Discord caps messages at 2000 characters. For a longer tag, use `/tag procreate <name> <pastebin link>`.
 - The Leg Start template also outputs a Mimu `/autoresponder add ...` line. That is a slash command, so fill it in by hand from the slash menu.

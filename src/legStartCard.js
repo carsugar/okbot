@@ -14,8 +14,8 @@ const separator = () => ({ type: 14, divider: true, spacing: 2 });
 export function parseLegStart({ leg, departure, destination, money, flightTime }) {
   const [depName, depImage = ''] = departure.split('|').map((s) => s.trim());
   const [dest, site = '', airport = ''] = destination.split('|').map((s) => s.trim());
-  // The city is everything before the comma, each word capitalized: "New Delhi, India" is NewDelhi.
-  const slug = dest.split(',')[0].split(/\s+/).map((w) => w.replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('') || 'Dest';
+  // The city is everything before the comma, hyphenated and capitalized: "New Delhi, India" is New-Delhi.
+  const slug = dest.split(',')[0].split(/\s+/).map((w) => w.replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('-') || 'Dest';
   const rawMoney = money.replace(/^\$/, '').trim();
   const flight = flightTime.replace(/\bhours\b/gi, 'hour');
   return {
@@ -34,7 +34,12 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
   };
 }
 
+// Money and touchdown are a line of text with a small icon beside it, no title. The icons are
+// hosted next to the banners.
+const withIcon = (content, icon) => ({ type: 9, components: [text(content)], accessory: { type: 11, media: { url: icon } } });
+
 export function legStartEmbed(d, headerImage) {
+  const images = headerImage.slice(0, headerImage.lastIndexOf('/'));
   const parts = [
     { type: 12, items: [{ media: { url: headerImage } }] },
     text(`Make your way from **${d.departure}** to your next destination, **${d.destination}!**`),
@@ -44,20 +49,21 @@ export function legStartEmbed(d, headerImage) {
       `All teams will be put onto the same, equalizing **${d.flightTime}** to ${d.country}.` +
         (d.site ? ` Once there, make your way to **${d.site}** to receive your next clue.` : ''),
     ),
+    separator(),
   ];
   if (d.moneyDisplay) {
     parts.push(
-      text(
-        `### 💵 Leg money\nYou have received **${d.moneyDisplay}** for this leg. Use the command \`${d.moneyCommand}\` to claim it. ` +
+      withIcon(
+        `You have received **${d.moneyDisplay}** for this leg. Use the command \`${d.moneyCommand}\` to claim it. ` +
           'Only one designated partner should use this command.',
+        `${images}/money.png`,
       ),
     );
   }
   parts.push(
-    separator(),
-    text(
-      `### ✈️ Touchdown\nUse the command \`${d.touchdownCommand}\` to officially land` +
-        (d.airport ? ` at **${d.airport}**.` : '.'),
+    withIcon(
+      `Use the command \`${d.touchdownCommand}\` to officially land` + (d.airport ? ` at **${d.airport}**.` : '.'),
+      `${images}/plane.png`,
     ),
   );
   return { component: { type: 17, accent_color: 0xf2c230, components: parts } };

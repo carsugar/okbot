@@ -11,7 +11,10 @@ const fields = {
   money: '$15',
   flightTime: '3 hours',
 };
-const texts = (embed) => embed.component.components.filter((c) => c.type === 10).map((c) => c.content).join('\n');
+// Sections hold their text inside, so look through them.
+const flatten = (embed) => embed.component.components.flatMap((c) => (c.type === 9 ? c.components : [c]));
+const texts = (embed) => flatten(embed).filter((c) => c.type === 10).map((c) => c.content).join('\n');
+const sections = (embed) => embed.component.components.filter((c) => c.type === 9);
 
 test('parseLegStart splits the pipe fields and normalizes money and flight time', () => {
   const d = parseLegStart(fields);
@@ -37,9 +40,9 @@ test('parseLegStart copes with missing optional parts', () => {
 });
 
 test('the touchdown command uses the whole city name, not just its first word', () => {
-  assert.equal(parseLegStart({ ...fields, destination: 'New Delhi, India | Red Fort | Indira Gandhi International Airport' }).touchdownCommand, '!NewDelhi-Touchdown');
-  assert.equal(parseLegStart({ ...fields, destination: 'machu picchu, Peru' }).touchdownCommand, '!MachuPicchu-Touchdown');
-  assert.equal(parseLegStart({ ...fields, destination: "Cote d'Ivoire" }).touchdownCommand, '!CoteDivoire-Touchdown');
+  assert.equal(parseLegStart({ ...fields, destination: 'New Delhi, India | Red Fort | Indira Gandhi International Airport' }).touchdownCommand, '!New-Delhi-Touchdown');
+  assert.equal(parseLegStart({ ...fields, destination: 'machu picchu, Peru' }).touchdownCommand, '!Machu-Picchu-Touchdown');
+  assert.equal(parseLegStart({ ...fields, destination: "Cote d'Ivoire" }).touchdownCommand, '!Cote-Divoire-Touchdown');
 });
 
 test('flight time that already says flight is left alone', () => {
@@ -60,12 +63,25 @@ test('card is one container: the banner image is the title, then the leg text', 
   assert.match(t, /\*\*Cajón del Maipo\*\*/);
   assert.match(t, /`!Claim-Leg3-Money`/);
   assert.match(t, /`!Santiago-Touchdown`.*SCL Airport/);
+  assert.equal(sections(embed).length, 2);
+});
+
+test('money and touchdown have no titles, just a plane or money icon beside the text', () => {
+  const embed = legStartEmbed(parseLegStart(fields), IMAGE);
+  const [money, touchdown] = sections(embed);
+  assert.doesNotMatch(texts(embed), /Leg money|Touchdown\n|###/);
+  assert.equal(money.accessory.type, 11);
+  assert.equal(money.accessory.media.url, 'https://example.com/money.png');
+  assert.match(money.components[0].content, /You have received \*\*\$15\*\* for this leg/);
+  assert.equal(touchdown.accessory.media.url, 'https://example.com/plane.png');
+  assert.match(touchdown.components[0].content, /officially land at \*\*SCL Airport\*\*/);
 });
 
 test('no money means no money section; no airport changes the touchdown line', () => {
   const t = texts(legStartEmbed(parseLegStart({ ...fields, money: '', destination: 'Santiago, Chile | Cajón del Maipo' }), IMAGE));
   assert.doesNotMatch(t, /Claim-Leg/);
   assert.match(t, /officially land\./);
+  assert.equal(sections(legStartEmbed(parseLegStart({ ...fields, money: '' }), IMAGE)).length, 1);
 });
 
 test('card stays under 3,000 bytes for typical input and rejects nothing silently', () => {
