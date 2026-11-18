@@ -22,8 +22,8 @@ const ROUTE_INFO_FOOTER = "# ⬥ ───────────────�
 const TRAVEL_INFO_HEADER = "# ⬥ ─── TRAVEL INFO ─── ⬥";
 const TRAVEL_INFO_FOOTER = "# ⬥ ─────────────────── ⬥";
 
-const TRAVEL_EMOJIS = { taxi: "🚕", bus: "🚌", walking: "🚶" };
-const TRAVEL_DURATION_LABELS = {
+export const TRAVEL_EMOJIS = { taxi: "🚕", bus: "🚌", walking: "🚶" };
+export const TRAVEL_DURATION_LABELS = {
   taxi: "Duration of Ride",
   bus: "Duration of Ride",
   walking: "Duration of Walk",
@@ -46,13 +46,13 @@ const TRAVEL_FREE_VERBS = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function humanJoin(items) {
+export function humanJoin(items) {
   if (items.length === 1) return items[0];
   if (items.length === 2) return `${items[0]} or ${items[1]}`;
   return items.slice(0, -1).join(", ") + `, or ${items[items.length - 1]}`;
 }
 
-function travelCmdSuffix(option) {
+export function travelCmdSuffix(option) {
   return (
     TRAVEL_CMD_SUFFIXES[option.toLowerCase()] ||
     option
@@ -62,7 +62,7 @@ function travelCmdSuffix(option) {
   );
 }
 
-function travelVerb(option) {
+export function travelVerb(option) {
   return (
     TRAVEL_VERBS[option.toLowerCase()] || `use the ${option.toLowerCase()}`
   );
@@ -88,7 +88,7 @@ function splitIntoQuartiles(min, max) {
   ];
 }
 
-function buildIndividualCommand(option, duration, cost, inits) {
+export function buildIndividualCommand(option, duration, cost, inits) {
   const cmdSuffix = travelCmdSuffix(option);
   const trigger = `!${inits}-${cmdSuffix}`;
   const costVal = parseFloat(cost.replace(/[^0-9.]/g, "") || "0");
@@ -136,7 +136,7 @@ function buildIndividualCommand(option, duration, cost, inits) {
   ];
 }
 
-function getInitials(dest) {
+export function getInitials(dest) {
   return dest
     .split(/\s+/)
     .filter(Boolean)
@@ -163,7 +163,7 @@ const ORDINAL_TEENS = ["tenth", "eleventh", "twelfth", "thirteenth", "fourteenth
 const CARDINAL_TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
 const ORDINAL_TENS = ["", "", "twentieth", "thirtieth", "fortieth", "fiftieth", "sixtieth", "seventieth", "eightieth", "ninetieth"];
 
-function numberToOrdinalWord(n) {
+export function numberToOrdinalWord(n) {
   if (n < 10) return ORDINAL_ONES[n];
   if (n < 20) return ORDINAL_TEENS[n - 10];
   const tens = Math.floor(n / 10);

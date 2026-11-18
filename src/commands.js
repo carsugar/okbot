@@ -1,3 +1,5 @@
+import { TEMPLATE_CHOICES } from './templates/index.js';
+
 export const TAG_TEMPLATE_COMMAND = {
   name: 'tag_template',
   description: 'Generate a Carlbot tag from a template.',
@@ -68,16 +70,13 @@ export const MINDMELD_COMMAND = {
 // Staging copies of the template commands, to try new output before it replaces the real ones.
 export const TEST_TEMPLATE_COMMAND = {
   name: 'test_template',
-  description: 'Try the new card-style template output (staging).',
+  description: 'Build any clue as a card and tags with an editor (staging).',
   default_member_permissions: '32', // MANAGE_GUILD
   contexts: [0],
   options: [
-    {
-      type: 1,
-      name: 'routeinfo_legstart',
-      description: 'Generate a Route Info: Leg Start card and tag.',
-      options: [{ type: 4, name: 'leg', description: 'Leg number', required: true }],
-    },
+    { type: 3, name: 'type', description: 'Which kind of clue', required: true, choices: TEMPLATE_CHOICES },
+    { type: 4, name: 'leg', description: 'Leg number (Leg Start, Roadblock, Detour, Pit Stop)', required: false },
+    { type: 3, name: 'tag', description: 'Tag name, to reopen a saved Task or Travel', required: false },
   ],
 };
 

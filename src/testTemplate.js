@@ -1,11 +1,17 @@
-import { JsonResponse } from './utils.js';
-import { openLegEditor } from './legEditor.js';
+import { openEditor } from './editor.js';
 
-// Staging version of the template commands. It shares nothing with /tag_template, and its
-// tags are named test-leg-N so they never collide with real ones.
+// Staging version of the template commands: one command, a type choice, and the editor panel.
+// It shares nothing with /tag_template, and its tags are named test-... so they never collide
+// with real ones.
 export async function handleTestTemplateCommand(interaction, env, origin) {
-  const sub = interaction.data.options?.[0];
-  if (sub?.name !== 'routeinfo_legstart') return new JsonResponse({ error: 'Unknown subcommand' }, { status: 400 });
-  const leg = String(sub.options.find((o) => o.name === 'leg').value);
-  return openLegEditor(interaction, env, origin, leg);
+  const options = interaction.data.options ?? [];
+  // The first version of this command was a subcommand per type; keep it working until the
+  // command is registered again.
+  const sub = options.find((o) => o.type === 1);
+  if (sub) {
+    const leg = sub.options?.find((o) => o.name === 'leg')?.value;
+    return openEditor(interaction, env, origin, 'legstart', { leg });
+  }
+  const get = (name) => options.find((o) => o.name === name)?.value;
+  return openEditor(interaction, env, origin, get('type'), { leg: get('leg'), tag: get('tag') });
 }

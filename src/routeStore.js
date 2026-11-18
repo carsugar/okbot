@@ -24,6 +24,15 @@ export class RouteStore extends DurableObject {
     return (await this.ctx.storage.get(`draft:${id}`)) ?? null;
   }
 
+  // The form values behind a saved card, so it can be reopened and edited.
+  async saveSaved(key, draft) {
+    await this.ctx.storage.put(`saved:${key}`, draft);
+  }
+
+  async getSaved(key) {
+    return (await this.ctx.storage.get(`saved:${key}`)) ?? null;
+  }
+
   async get(slug) {
     return (await this.ctx.storage.get(`slug:${slug}`)) ?? null;
   }

@@ -1,7 +1,7 @@
 import { AutoRouter } from 'itty-router';
 import { sampleRouteInfoEmbed, embedPageHtml } from './routeEmbedPage.js';
 import { handleTestTemplateCommand } from './testTemplate.js';
-import { handleLegEditorComponent, handleLegEditorModal } from './legEditor.js';
+import { handleEditorComponent, handleEditorModal } from './editor.js';
 import { routeStore } from './routeStore.js';
 import { legStartEmbed, bannerImage } from './legStartCard.js';
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
@@ -29,8 +29,11 @@ router.get('/route/preview', (request) =>
 router.get('/route/:slug', async (request, env) => {
   const data = await routeStore(env).get(request.params.slug);
   if (!data) return new Response('Not Found.', { status: 404 });
-  const title = `Route Info: Leg ${data.leg} Start`;
-  return new Response(embedPageHtml(legStartEmbed(data, bannerImage(new URL(request.url).origin, data.banner)), { title, description: `${data.departure} to ${data.destination}` }), {
+  // Cards saved by the editor carry their own embed; older ones are Leg Start data.
+  const origin = new URL(request.url).origin;
+  const embed = data.embed ?? legStartEmbed(data, bannerImage(origin, data.banner));
+  const title = data.title ?? `Route Info: Leg ${data.leg} Start`;
+  return new Response(embedPageHtml(embed, { title, description: data.description ?? `${data.departure} to ${data.destination}` }), {
     headers: { 'Content-Type': 'text/html;charset=UTF-8' },
   });
 });
@@ -56,14 +59,14 @@ router.post('/', async (request, env, ctx) => {
 
   if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
     if (interaction.data.custom_id.startsWith('mm:')) return handleMindMeldComponent(interaction, env);
-    if (interaction.data.custom_id.startsWith('le:')) return handleLegEditorComponent(interaction, env, ctx, new URL(request.url).origin);
+    if (interaction.data.custom_id.startsWith('le:')) return handleEditorComponent(interaction, env, ctx, new URL(request.url).origin);
     if (interaction.data.custom_id.startsWith('mp:')) return handleMemoryPokerComponent(interaction, env, new URL(request.url).origin);
     return handleComponent(interaction);
   }
 
   if (interaction.type === 5) {
     if (interaction.data.custom_id.startsWith('mm_modal:')) return handleMindMeldModal(interaction, env);
-    if (interaction.data.custom_id.startsWith('le_modal:')) return handleLegEditorModal(interaction, env, new URL(request.url).origin);
+    if (interaction.data.custom_id.startsWith('le_modal:')) return handleEditorModal(interaction, env, new URL(request.url).origin);
     if (interaction.data.custom_id.startsWith('mp_modal:')) return handleMemoryPokerModal(interaction, env, new URL(request.url).origin);
     return handleModalSubmit(interaction, env, ctx);
   }
