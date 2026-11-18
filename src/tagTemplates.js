@@ -1,4 +1,5 @@
 import { JsonResponse, sendFollowup } from "./utils.js";
+import { routeInfoPreviewMessage } from "./routeInfoPreview.js";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -561,6 +562,8 @@ export function handleCommand(interaction) {
   switch (subName) {
     case "routeinfo_legstart":
       return new JsonResponse(legStartModal(getOpt("leg")));
+    case "preview_routeinfo":
+      return new JsonResponse({ type: 4, data: routeInfoPreviewMessage(ROUTE_INFO_HEADER_IMAGE) });
     case "routeinfo_task":
       return new JsonResponse(taskModal());
     case "routeinfo_travel":
