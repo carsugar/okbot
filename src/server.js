@@ -1,4 +1,5 @@
 import { AutoRouter } from 'itty-router';
+import { sampleRouteInfoEmbed, embedPageHtml } from './routeEmbedPage.js';
 import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import { JsonResponse, verifyDiscordRequest } from './utils.js';
 import { handleCommand, handleComponent, handleModalSubmit } from './tagTemplates.js';
@@ -11,6 +12,11 @@ const router = AutoRouter();
 router.get('/', (request, env) => {
   return new Response(`okbot | ${env.DISCORD_APPLICATION_ID}`);
 });
+
+router.get('/route/preview', () =>
+  new Response(embedPageHtml(sampleRouteInfoEmbed(), { title: 'Route Info: Leg 3', description: 'Sample Route Info card' }), {
+    headers: { 'Content-Type': 'text/html;charset=UTF-8' },
+  }));
 
 router.post('/', async (request, env, ctx) => {
   const { isValid, interaction } = await verifyDiscordRequest(request, env);
