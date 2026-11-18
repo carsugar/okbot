@@ -5,7 +5,7 @@
 A Discord game for a challenge org, modelled on https://koutar.com/memory-poker/. A board of 16 playing cards is flashed to a player for 20 seconds, then hidden. Three shared cards are revealed. The player picks two board squares by letter. Those two cards plus the three shared cards make a five-card poker hand, and the stronger hand wins.
 
 Two modes:
-- **Duel:** two players, same board, best of 3. Used as a head-to-head challenge.
+- **Duel:** two players, same board, best of 5. Used as a head-to-head challenge.
 - **Solo:** one player, told whether they found the best hand available on the board.
 
 ## Goals
@@ -33,7 +33,7 @@ Two modes:
 - **Deck:** standard 52 cards. Each round the board is 16 distinct cards on squares A to P, and the shared cards are 3 further distinct cards. A fresh deal each round, drawn with `crypto.getRandomValues`.
 - **Hand:** the two picked board cards plus the three shared cards, ranked as standard poker: straight flush, four of a kind, full house, flush, straight, three of a kind, two pair, pair, high card. Aces are high, and low in A-2-3-4-5. Suits never break ties, so identical rank patterns draw.
 - **Picking:** two different squares. Both players may pick the same squares.
-- **Duel:** the match ends when a player has 2 round wins. A drawn round counts for neither. If neither has 2 after round 3, extra rounds are played until someone leads after a round. Each round is a new deal.
+- **Duel:** the match ends when a player has 3 round wins. A drawn round counts for neither. If neither has 3 after round 5, extra rounds are played until someone leads after a round. Each round is a new deal.
 - **Solo:** one board at a time. After the answer the bot reports the result, then offers a button for a new board.
 - **Best hand:** the bot evaluates all 120 two-square picks and takes the strongest. Solo reports found or not found, the best pick with its hand, the player's pick with its hand, and how many of the 120 picks the player's hand beat.
 
@@ -66,7 +66,7 @@ Unit tests cover the evaluator (all nine hand types, wheel straight, ties), `dea
 ## My calls (not yet agreed)
 
 - 60-second answering window with forfeit.
-- Extra rounds when level after three.
+- Extra rounds when level after five. Best of 5 is my reading of "maybe bets of 5".
 - Both players may choose the same squares.
 - No End game button.
 - Solo reports how many of the 120 picks the player beat.
