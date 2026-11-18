@@ -74,6 +74,8 @@ function analyse(deal, picks) {
 // Every player has answered or forfeited: score the round and decide whether the match is over.
 function resolveRound(state, now) {
   const { players, deal } = state;
+  // Games saved before the match length existed were best of 5.
+  const bestOf = state.bestOf ?? STANDARD_ROUNDS;
   const picks = {};
   const hands = {};
   const forfeited = [];
@@ -97,14 +99,14 @@ function resolveRound(state, now) {
     outcome = cmp === 0 ? 'draw' : 'win';
     winner = cmp > 0 ? a : cmp < 0 ? b : null;
     if (winner) wins[winner] += 1;
-    const need = winsNeeded(state.bestOf);
+    const need = winsNeeded(bestOf);
     if (wins[a] >= need) matchWinner = a;
     else if (wins[b] >= need) matchWinner = b;
-    else if (state.round >= state.bestOf && wins[a] !== wins[b]) matchWinner = wins[a] > wins[b] ? a : b;
+    else if (state.round >= bestOf && wins[a] !== wins[b]) matchWinner = wins[a] > wins[b] ? a : b;
   }
 
   const roundResult = {
-    round: state.round, bestOf: state.bestOf, outcome, winner, hands, picks, forfeited, wins,
+    round: state.round, bestOf, outcome, winner, hands, picks, forfeited, wins,
     finished: matchWinner !== null, matchWinner, analysis,
   };
   return {

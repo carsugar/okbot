@@ -46,7 +46,7 @@ A live card-memory game. Run `/memorypoker` in a server channel to open a lobby,
 5. **Result.** Both hands are revealed in the same message. Your hand is your two cards plus the three shared cards, ranked as ordinary poker (suits never break ties). The stronger hand wins the round. **Next round** counts down again.
 
 Rules and extras:
-- The lobby has a match length selector: single round (the default), best of 3 or best of 5. The first to win half the rounds, rounded up, takes the duel. Drawn rounds count for neither. If it is level after the last round, extra rounds are played until a round leaves someone ahead. Each round is a fresh deal.
+- The lobby has a match length selector: single round (the default), best of 3 or best of 5. The first to win half the rounds, rounded up, takes the duel. Drawn rounds count for neither. If it is level after the last round, extra rounds are played until a round leaves someone ahead. Each round is a fresh deal. In a duel every round is played in a new message at the bottom of the channel, and the result is posted as another new message, so chat in between never buries the game.
 - Solo tells you whether you found the best of the 120 possible picks, and how many of them your hand beat.
 - If you do not lock in within 30 seconds you forfeit the round.
 - The board is visible to anyone in the channel, and the whole round is one message that the bot edits on a timer, using the interaction token (valid 15 minutes). The board, shared cards and hands are pictures drawn by the Worker (`/mp/...png`).

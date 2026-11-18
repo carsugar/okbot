@@ -17,6 +17,8 @@ const EXPIRY_MS = 24 * 60 * 60 * 1000;
 const EPHEMERAL = 64;
 const COMPONENTS_V2 = 1 << 15;
 const COUNTDOWN_FROM = 5;
+// A moment for the Ready press to be answered before the next round's message is posted.
+const OPEN_DELAY_MS = 500;
 const DISCORD_API = 'https://discord.com/api/v10';
 
 const randomDeal = () => deal(() => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32);
@@ -52,10 +54,13 @@ export class MemoryPokerGame extends DurableObject {
 
   // A fresh round: save it with the countdown scheduled. `token` edits the public message and
   // `tokens` (player id to token) are what each private picker is sent with.
-  async #startRound(state, token, tokens, now) {
-    await this.ctx.storage.put({ live: { token }, tokens });
+  // A duel's later rounds (`fresh`) play out in a new message at the bottom of the channel, so
+  // the 'open' step posts it. The first round uses the lobby message.
+  async #startRound(state, token, tokens, now, fresh = false) {
+    await this.ctx.storage.put({ live: { token, messageId: null }, tokens });
     await this.ctx.storage.delete('pickers');
-    await this.#save(state, countdownQueue(now));
+    const start = fresh ? now + OPEN_DELAY_MS : now;
+    await this.#save(state, [...(fresh ? [{ at: now + OPEN_DELAY_MS, type: 'open' }] : []), ...countdownQueue(start)]);
     // Draw this round's pictures during the countdown so they are ready when the cards flip.
     const { board, shared } = state.deal;
     this.ctx.waitUntil(Promise.all([cardPng(routeStore(this.env), 'board', board), cardPng(routeStore(this.env), 'hidden', shared)]).catch(() => {}));
@@ -123,8 +128,8 @@ export class MemoryPokerGame extends DurableObject {
 
     if (type === 'waiting' || resolved) {
       // The public message shows who has locked in, or the result.
-      const components = resolved ? this.#resultParts(meta, out.state, resolved) : this.#hiddenParts(meta, out.state);
-      await this.#patch(live?.token, components, meta.appId);
+      if (resolved) await this.#showResult(meta, out.state, resolved, live);
+      else await this.#patch(live?.token, this.#hiddenParts(meta, out.state), meta.appId, live?.messageId ?? '@original');
     }
     // Once the round is decided, the other player's private grid becomes a short note.
     if (resolved) await this.#closePickers(meta, out.state, userId);
@@ -151,8 +156,13 @@ export class MemoryPokerGame extends DurableObject {
     const out = nextRound(state, randomDeal(), now);
     if (out.result.type !== 'ok') return out.result;
     await this.ctx.storage.delete('ready');
-    await this.#startRound(out.state, token, ready, now);
-    return { type: 'ok', players: out.state.players, round: out.state.round, wins: out.state.wins, bestOf: out.state.bestOf };
+    const duel = state.mode === 'duel';
+    await this.#startRound(out.state, token, ready, now, duel);
+    // Practice counts down in the same message.
+    if (!duel) return { type: 'ok', components: countdownComponents(COUNTDOWN_FROM, out.state.players, out.state.round, out.state.wins, out.state.bestOf) };
+    // The duel's result message stays as the record, without its button.
+    const record = this.#resultParts(meta, state, state.lastResult, Object.keys(ready)).filter((c) => c.type !== 1);
+    return { type: 'ok', components: record };
   }
 
   async alarm() {
@@ -173,6 +183,7 @@ export class MemoryPokerGame extends DurableObject {
     // Decide everything and save it first. Network calls let other requests run, so saving
     // afterwards would overwrite an answer that arrived in the meantime.
     let { due, rest: pending } = takeDue(queue, now);
+    let liveNow = live;
     // If the alarm ran late, skip countdown numbers that are already over.
     if (due.some((i) => i.type === 'flash')) due = due.filter((i) => i.type !== 'tick');
     let current = state;
@@ -180,7 +191,14 @@ export class MemoryPokerGame extends DurableObject {
     let openPickers = false;
     let closePickers = false;
     for (const item of due) {
-      if (item.type === 'tick') {
+      if (item.type === 'open') {
+        // Safe to post now: nobody can answer before the board is shown.
+        const message = await this.#post(live?.token, countdownComponents(COUNTDOWN_FROM, current.players, current.round, current.wins, current.bestOf), meta.appId, false);
+        if (message?.id) {
+          liveNow = { ...live, messageId: message.id };
+          await this.ctx.storage.put({ live: liveNow });
+        }
+      } else if (item.type === 'tick') {
         edits.push(countdownComponents(item.n, current.players, current.round, current.wins, current.bestOf));
       } else if (item.type === 'flash') {
         for (const id of current.players) current = viewBoard(current, id, now).state;
@@ -200,14 +218,33 @@ export class MemoryPokerGame extends DurableObject {
         current = out.state;
         if (!out.resolved) continue;
         pending = pending.filter((i) => i.type !== 'deadline');
-        edits.push(this.#resultParts(meta, current, out.resolved));
+        edits.push({ result: out.resolved });
         closePickers = true;
       }
     }
     await this.#save(current, pending);
-    for (const components of edits) await this.#patch(live?.token, components, meta.appId);
+    for (const edit of edits) {
+      if (edit.result) await this.#showResult(meta, current, edit.result, liveNow);
+      else await this.#patch(liveNow?.token, edit, meta.appId, liveNow?.messageId ?? '@original');
+    }
     if (openPickers) await this.#openPickers(meta, current);
     if (closePickers) await this.#closePickers(meta, current, null);
+  }
+
+  // The round is decided. In a duel the result goes in a new message at the bottom, because
+  // players chat while they play, and the round's own message becomes a short note. If the new
+  // message cannot be posted, the result replaces the round's message instead.
+  async #showResult(meta, state, result, live) {
+    const parts = this.#resultParts(meta, state, result);
+    const at = live?.messageId ?? '@original';
+    if (state.mode === 'duel') {
+      const posted = await this.#post(live?.token, parts, meta.appId, false);
+      if (posted?.id) {
+        await this.#patch(live.token, [text(`## 🃏 Round ${result.round} is over\n-# The result is posted below.`)], meta.appId, at);
+        return;
+      }
+    }
+    await this.#patch(live?.token, parts, meta.appId, at);
   }
 
   // Send each player their private picker, with the token they pressed a button with.
@@ -232,7 +269,7 @@ export class MemoryPokerGame extends DurableObject {
   // The private grid for one player right now: the grid, or a note once they are done.
   #pickerView(meta, state, userId) {
     const p = state.per[userId];
-    if (!state.roundOpen) return [text('This round is over. The result is in the message above.')];
+    if (!state.roundOpen) return [text('This round is over. The result is posted in the channel.')];
     if (p.answer) return [text(`Locked in **${p.answer.map((i) => SQUARES[i]).join(' + ')}**. Waiting for your opponent.`)];
     if (p.forfeited) return [text('Time ran out for this round.')];
     const markers = p.markers.map((i) => SQUARES[i]).join('');
@@ -270,8 +307,9 @@ export class MemoryPokerGame extends DurableObject {
     return this.#discord('PATCH', token, `/messages/${messageId}`, components, appId, { flags: COMPONENTS_V2 });
   }
 
-  #post(token, components, appId) {
-    return this.#discord('POST', token, '?wait=true', components, appId, { flags: COMPONENTS_V2 | EPHEMERAL });
+  // Private to the player by default (their picker); `isPrivate = false` posts to the channel.
+  #post(token, components, appId, isPrivate = true) {
+    return this.#discord('POST', token, '?wait=true', components, appId, { flags: COMPONENTS_V2 | (isPrivate ? EPHEMERAL : 0) });
   }
 }
 
@@ -352,9 +390,8 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
 
   if (action === 'next') {
     const result = await stub.next(userId, round, interaction.token);
-    if (result.type === 'waiting') return updateMessage(result.components);
-    if (result.type !== 'ok') return refusal(result.type);
-    return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, result.round, result.wins, result.bestOf));
+    if (result.type === 'waiting' || result.type === 'ok') return updateMessage(result.components);
+    return refusal(result.type);
   }
 
   return ephemeral('Unknown button.');
