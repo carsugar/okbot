@@ -1,5 +1,5 @@
 // Pieces shared by every template: card building blocks and how tags are written out.
-import { legTagText } from '../legStartCard.js';
+import { legTagText, accentFor } from '../legStartCard.js';
 
 export const CARLBOT_MENTION = '<@235148962103951360>';
 // Staging tags all start with this so they never collide with the real ones.
@@ -8,7 +8,7 @@ export const TEST_PREFIX = 'test-';
 export const text = (content) => ({ type: 10, content });
 export const separator = () => ({ type: 14, divider: true, spacing: 2 });
 export const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });
-export const card = (parts) => ({ component: { type: 17, accent_color: 0xf2c230, components: parts.filter(Boolean) } });
+export const card = (parts) => ({ component: { type: 17, accent_color: accentFor(parts), components: parts.filter(Boolean) } });
 
 // Outputs a template makes:
 //   { kind: 'card', key, tag, label, embed, title, description }  a link card plus its tag

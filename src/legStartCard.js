@@ -8,6 +8,17 @@ export const INVISIBLE = '⠀';
 export const bannerImage = (origin, banner = 'route-info') => `${origin}/img/${banner}.webp`;
 export const routeInfoBanner = (origin) => bannerImage(origin);
 
+// The embed's left bar takes the colour of its header image.
+const BANNER_COLORS = {
+  'route-info': 0x1c5097, detour: 0xf99e02, roadblock: 0xe00d12,
+  'face-off': 0xdb5500, 'fast-forward': 0x72c742, 'u-turn': 0xecbb01,
+};
+const DEFAULT_ACCENT = 0xf2c230;
+export const accentFor = (parts) => {
+  const url = parts.find((p) => p?.type === 12)?.items?.[0]?.media?.url ?? '';
+  return BANNER_COLORS[/\/img\/([\w-]+)\.webp/.exec(url)?.[1]] ?? DEFAULT_ACCENT;
+};
+
 const text = (content) => ({ type: 10, content });
 const separator = () => ({ type: 14, divider: true, spacing: 2 });
 
@@ -54,12 +65,13 @@ export function legStartEmbed(d, headerImage) {
         `💵 You have received **${d.moneyDisplay}** for this leg. Use the command \`${d.moneyCommand}\` to claim it. ` +
           'Only one designated partner should use this command.',
       ),
+      { type: 14, divider: false, spacing: 1 },
     );
   }
   parts.push(
-    text(`✈️ Use the command \`${d.touchdownCommand}\` to officially land` + (d.airport ? ` at **${d.airport}**.` : '.')),
+    text(`🛬 Use the command \`${d.touchdownCommand}\` to officially land` + (d.airport ? ` at **${d.airport}**.` : '.')),
   );
-  return { component: { type: 17, accent_color: 0xf2c230, components: parts } };
+  return { component: { type: 17, accent_color: accentFor(parts), components: parts } };
 }
 
 // The form values that would produce this saved leg, to pre-fill the form when editing.

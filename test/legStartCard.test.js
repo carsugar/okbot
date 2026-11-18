@@ -68,9 +68,9 @@ test('money and touchdown have no titles, just an emoji at the left of the text'
   assert.doesNotMatch(texts(embed), /Leg money|Touchdown\n|###/);
   assert.ok(embed.component.components.every((c) => c.type !== 9 && !c.accessory));
   const money = lines(embed).find((l) => l.startsWith('💵 '));
-  const touchdown = lines(embed).find((l) => l.startsWith('✈️ '));
+  const touchdown = lines(embed).find((l) => l.startsWith('🛬 '));
   assert.match(money, /^💵 You have received \*\*\$15\*\* for this leg/);
-  assert.match(touchdown, /^✈️ Use the command `!Santiago-Touchdown` to officially land at \*\*SCL Airport\*\*/);
+  assert.match(touchdown, /^🛬 Use the command `!Santiago-Touchdown` to officially land at \*\*SCL Airport\*\*/);
 });
 
 test('no money means no money section; no airport changes the touchdown line', () => {
@@ -156,4 +156,13 @@ test('re-parsing the form values gives the same leg', () => {
   const d = parseLegStart(fields);
   const v = legFormValues(d);
   assert.deepEqual(parseLegStart({ leg: '3', departure: v.departure, destination: v.destination, money: v.money, flightTime: v.flight_time }), d);
+});
+
+test('the embed bar takes the colour of its header image', async () => {
+  const { accentFor } = await import('../src/legStartCard.js');
+  const hdr = (n) => [{ type: 12, items: [{ media: { url: `https://x.dev/img/${n}.webp` } }] }];
+  assert.equal(accentFor(hdr('route-info')), 0x1c5097);
+  assert.equal(accentFor(hdr('roadblock')), 0xe00d12);
+  assert.equal(accentFor(hdr('detour')), 0xf99e02);
+  assert.equal(accentFor([]), 0xf2c230);
 });
