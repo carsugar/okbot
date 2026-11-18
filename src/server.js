@@ -43,7 +43,7 @@ router.post('/', async (request, env, ctx) => {
 
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data.name === 'mindmeld') return handleMindMeldCommand(interaction, env);
-    if (interaction.data.name === 'test_template') return handleTestTemplateCommand(interaction);
+    if (interaction.data.name === 'test_template') return handleTestTemplateCommand(interaction, env);
     return handleCommand(interaction);
   }
 

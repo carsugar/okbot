@@ -10,6 +10,11 @@ export class RouteStore extends DurableObject {
     return slug;
   }
 
+  async getByKey(key) {
+    const slug = await this.ctx.storage.get(`key:${key}`);
+    return slug ? ((await this.ctx.storage.get(`slug:${slug}`)) ?? null) : null;
+  }
+
   async get(slug) {
     return (await this.ctx.storage.get(`slug:${slug}`)) ?? null;
   }

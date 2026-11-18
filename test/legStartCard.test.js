@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder, newSlug, routeInfoBanner, INVISIBLE } from '../src/legStartCard.js';
+import { parseLegStart, legStartEmbed, legTagText, mimuAutoresponder, newSlug, routeInfoBanner, legFormValues, INVISIBLE } from '../src/legStartCard.js';
 import { embedBytes, MAX_EMBED_BYTES } from '../src/routeEmbedPage.js';
 
 const IMAGE = 'https://example.com/header.webp';
@@ -109,4 +109,33 @@ test('no departure image means no second gallery', () => {
 
 test('the banner is the Route Info image served by the Worker itself', () => {
   assert.equal(routeInfoBanner('https://x.dev'), 'https://x.dev/img/route-info.webp');
+});
+
+test('a saved leg turns back into the form values that produced it', () => {
+  assert.deepEqual(legFormValues(parseLegStart(fields)), {
+    departure: 'Machu Picchu, Peru | https://example.com/dep.png',
+    destination: 'Santiago, Chile | Cajón del Maipo | SCL Airport',
+    money: '$15',
+    flight_time: '3 hour',
+  });
+});
+
+test('form values leave out missing optional parts', () => {
+  assert.deepEqual(legFormValues(parseLegStart({ ...fields, departure: 'Cusco', destination: 'Lima', money: '' })), {
+    departure: 'Cusco',
+    destination: 'Lima',
+    money: '',
+    flight_time: '3 hour',
+  });
+});
+
+test('a destination with an airport but no site keeps its place', () => {
+  const v = legFormValues(parseLegStart({ ...fields, destination: 'Lima | | LIM Airport' }));
+  assert.equal(v.destination, 'Lima |  | LIM Airport');
+});
+
+test('re-parsing the form values gives the same leg', () => {
+  const d = parseLegStart(fields);
+  const v = legFormValues(d);
+  assert.deepEqual(parseLegStart({ leg: '3', departure: v.departure, destination: v.destination, money: v.money, flightTime: v.flight_time }), d);
 });

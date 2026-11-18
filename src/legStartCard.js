@@ -61,6 +61,18 @@ export function legStartEmbed(d, headerImage) {
   return { component: { type: 17, accent_color: 0xf2c230, components: parts } };
 }
 
+// The form values that would produce this saved leg, to pre-fill the form when editing.
+export function legFormValues(d) {
+  const destParts = [d.destination, d.site, d.airport];
+  while (destParts.length > 1 && !destParts.at(-1)) destParts.pop();
+  return {
+    departure: d.departureImage ? `${d.departure} | ${d.departureImage}` : d.departure,
+    destination: destParts.join(' | '),
+    money: d.moneyDisplay,
+    flight_time: d.flightTime.replace(/ flight$/, ''),
+  };
+}
+
 export const legTagText = ({ carlbotMention, tagName, url }) => `${carlbotMention} tag + ${tagName} [${INVISIBLE}](${url})`;
 
 export const mimuAutoresponder = (d) =>
