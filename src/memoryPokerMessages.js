@@ -75,17 +75,7 @@ export const boardComponents = (board, hideAtSec, origin) => [
 export const hiddenComponents = (shared, deadlineSec, origin, status) => [
   text('## 🃏 Board hidden\nYour cards are face down, lettered A to P. The three shared cards are on the bottom row.'),
   gallery(imageUrl(origin, 'hidden', shared)),
-  text(`-# Place two markers, then Lock in <t:${deadlineSec}:R>\n${status}`),
-];
-
-// The sixteen squares as buttons, then Lock in, on the public message. Pressing a square places
-// or removes that player's marker (shown privately); Lock in sends the two markers as the answer.
-export const markerRows = (gameId, round) => [
-  ...[0, 1, 2, 3].map((r) => ({
-    type: 1,
-    components: [...SQUARES.slice(r * 4, r * 4 + 4)].map((letter) => button(2, letter, pickId(gameId, round, letter))),
-  })),
-  { type: 1, components: [button(3, 'Lock in', lockInId(gameId, round))] },
+  text(`-# Your private picker has opened below. Place two markers, then Lock in <t:${deadlineSec}:R>\n${status}`),
 ];
 
 // Each player's private copy of the grid: their picked squares are highlighted. `markers` is
@@ -125,8 +115,26 @@ function soloParts(origin, deal, result) {
   ];
 }
 
-export function roundComponents(players, result, deal, origin) {
-  if (result.outcome === 'solo') return soloParts(origin, deal, result);
+const readyLine = (players, ready) => text(readyStatus(players, ready));
+
+// ✅ pressed Ready, ⏳ not yet.
+export const readyStatus = (players, ready) =>
+  `${players.map((id) => `${ready.includes(id) ? '✅' : '⏳'} ${mention(id)}`).join(' · ')} ready for the next round`;
+
+// The result, then (unless the match is over) the button for the next round. In a duel both
+// players press it, so the Ready line shows who has.
+export function roundComponents(players, result, deal, origin, gameId, ready = []) {
+  const solo = result.outcome === 'solo';
+  const parts = solo ? soloParts(origin, deal, result) : duelParts(players, result, deal, origin);
+  if (result.finished) return parts;
+  return [
+    ...parts,
+    ...(!solo && ready.length ? [readyLine(players, ready)] : []),
+    { type: 1, components: [button(1, solo ? 'New board' : 'Ready for next round', nextId(gameId, result.round))] },
+  ];
+}
+
+function duelParts(players, result, deal, origin) {
   const [a, b] = players;
   const verdict = result.outcome === 'draw' ? '## 🤝 Draw' : `## 🏆 ${mention(result.winner)} takes the round`;
   const parts = [text(`## 🃏 Round ${result.round}`), ...playerParts(origin, deal, result, a), ...playerParts(origin, deal, result, b)];
@@ -141,10 +149,8 @@ export function roundComponents(players, result, deal, origin) {
 
 // A join button carries its spot (0 or 1) where other ids carry the round.
 export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
-export const pickId = (gameId, round, letter) => `mp:pick:${gameId}:${round}:${letter}`;
 export const ppickId = (gameId, round, letter) => `mp:ppick:${gameId}:${round}:${letter}`;
 export const plockId = (gameId, round) => `mp:plock:${gameId}:${round}`;
-export const lockInId = (gameId, round) => `mp:lockin:${gameId}:${round}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;
 
 export function parseId(customId) {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cardLabel, lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
-  roundComponents, markerRows, pickerComponents, joinId, pickId, lockInId, ppickId, plockId, nextId, parseId,
+  roundComponents, readyStatus, pickerComponents, joinId, ppickId, plockId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
 const [A, B] = ['100000000000000001', '100000000000000002'];
@@ -90,12 +90,13 @@ test('board message is a title with a countdown and the board picture', () => {
   assert.deepEqual(images(parts), [boardUrl]);
 });
 
-test('hidden message shows the face-down lettered cards and the shared cards as one picture, with the lock status', () => {
+test('hidden message shows the face-down lettered cards and the shared cards as one picture, with the lock status and no buttons', () => {
   const parts = hiddenComponents(DEAL.shared, 1_700_000_060, ORIGIN, `⏳ <@${A}>`);
   assert.match(texts(parts), /## 🃏 Board hidden/);
   assert.ok(texts(parts).includes('<t:1700000060:R>'));
   assert.ok(texts(parts).includes(`⏳ <@${A}>`));
   assert.deepEqual(images(parts), [`${ORIGIN}/mp/hidden/KSKD2H.png`]);
+  assert.equal(parts.filter((c) => c.type === 1).length, 0);
 });
 
 const duelResult = (over = {}) => ({
@@ -191,25 +192,34 @@ test('every text stays well under Discord limits with long mention ids', () => {
 test('ids round trip action, game, round and square, and stay under 100 characters', () => {
   const g = '1234567890123456789';
   assert.deepEqual(parseId(joinId(g, 1)), { action: 'join', gameId: g, round: 1, letter: '' });
-  assert.deepEqual(parseId(pickId(g, 12, 'J')), { action: 'pick', gameId: g, round: 12, letter: 'J' });
+  assert.deepEqual(parseId(ppickId(g, 4, 'K')), { action: 'ppick', gameId: g, round: 4, letter: 'K' });
+  assert.deepEqual(parseId(plockId(g, 4)), { action: 'plock', gameId: g, round: 4, letter: '' });
   assert.deepEqual(parseId(nextId(g, 7)), { action: 'next', gameId: g, round: 7, letter: '' });
-  for (const id of [joinId(g, 1), pickId(g, 999, 'P'), nextId(g, 999)]) assert.ok(id.length < 100);
+  for (const id of [joinId(g, 1), ppickId(g, 999, 'P'), plockId(g, 999), nextId(g, 999)]) assert.ok(id.length < 100);
 });
 
-test('the marker buttons are the sixteen squares in four rows of four, then Lock in, all available straight away', () => {
-  const rows = markerRows('123', 2);
-  assert.equal(rows.length, 5);
-  assert.deepEqual(rows.slice(0, 4).map((r) => r.components.map((b) => b.label).join('')), ['ABCD', 'EFGH', 'IJKL', 'MNOP']);
-  assert.deepEqual(rows[1].components[2].custom_id, pickId('123', 2, 'G'));
-  assert.deepEqual(rows[4].components.map((b) => b.label), ['Lock in']);
-  assert.equal(rows[4].components[0].custom_id, lockInId('123', 2));
-  assert.ok(rows.every((r) => r.components.every((b) => b.disabled === undefined)));
+test('the ready line shows who is ready for the next round', () => {
+  assert.equal(readyStatus([A, B], [A]), `✅ <@${A}> · ⏳ <@${B}> ready for the next round`);
+  assert.equal(readyStatus([A, B], []), `⏳ <@${A}> · ⏳ <@${B}> ready for the next round`);
 });
 
-test('the Lock in id round trips', () => {
-  assert.deepEqual(parseId(lockInId('123', 4)), { action: 'lockin', gameId: '123', round: 4, letter: '' });
-  assert.deepEqual(parseId(ppickId('123', 4, 'K')), { action: 'ppick', gameId: '123', round: 4, letter: 'K' });
-  assert.deepEqual(parseId(plockId('123', 4)), { action: 'plock', gameId: '123', round: 4, letter: '' });
+test('a duel result asks both players to press Ready, solo has New board', () => {
+  const duelParts = roundComponents([A, B], duelResult(), DEAL, ORIGIN, 'g1');
+  const soloParts = roundComponents([A], soloResult(true), DEAL, ORIGIN, 'g1');
+  assert.deepEqual(duelParts.filter((c) => c.type === 1).flatMap((r) => r.components).map((b) => b.label), ['Ready for next round']);
+  assert.deepEqual(soloParts.filter((c) => c.type === 1).flatMap((r) => r.components).map((b) => b.label), ['New board']);
+});
+
+test('the ready line sits above the button once someone has pressed it', () => {
+  const parts = roundComponents([A, B], duelResult(), DEAL, ORIGIN, 'g1', [A]);
+  assert.ok(texts(parts).includes(`✅ <@${A}> · ⏳ <@${B}> ready for the next round`));
+  const lastText = parts.findLastIndex((c) => c.type === 10);
+  assert.ok(lastText < parts.findIndex((c) => c.type === 1));
+});
+
+test('a finished match has no ready button', () => {
+  const parts = roundComponents([A, B], duelResult({ round: 4, wins: { [A]: 3, [B]: 1 }, finished: true, matchWinner: A }), DEAL, ORIGIN, 'g1');
+  assert.equal(parts.filter((c) => c.type === 1).length, 0);
 });
 
 const pickerButtons = (parts) => parts.filter((c) => c.type === 1).flatMap((r) => r.components);
