@@ -18,25 +18,29 @@ const button = (style, label, custom_id, extra = {}) => ({ type: 2, style, label
 
 const spotLabel = (id) => (id ? mention(id) : 'open');
 
-export function lobbyComponents(gameId, spots, closesAtSec) {
+// The title, the one-line idea and the four steps. Solo reads step 4 for one player.
+const howToText = (solo) => {
   const flash = FLASH_MS / 1000;
   const answer = ANSWER_MS / 1000;
   return [
-    text(
-      [
-        '# 🃏 Memory Poker',
-        '*Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards.*',
-        '',
-        '## How to play:',
-        '',
-        `1. 16 cards are dealt face up on squares A to P. You have ${flash} seconds to memorize them.`,
-        '2. The cards turn face down and three shared cards are revealed.',
-        `3. You have ${answer} seconds to place your two markers on the squares you think make the best hand.`,
-        '4. Both hands are revealed. The stronger poker hand wins the round.',
-        '',
-        `-# Best of ${STANDARD_ROUNDS}: the first to win ${WINS_NEEDED} rounds takes the duel.`,
-      ].join('\n'),
-    ),
+    '# 🃏 Memory Poker',
+    '*Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards.*',
+    '',
+    '## How to play:',
+    '',
+    `1. 16 cards are dealt face up on squares A to P. You have ${flash} seconds to memorize them.`,
+    '2. The cards turn face down and three shared cards are revealed.',
+    `3. You have ${answer} seconds to place your two markers on the squares you think make the best hand.`,
+    solo
+      ? '4. Your hand is revealed, and you find out whether it was the best one on the board.'
+      : '4. Both hands are revealed. The stronger poker hand wins the round.',
+    ...(solo ? [] : ['', `-# Best of ${STANDARD_ROUNDS}: the first to win ${WINS_NEEDED} rounds takes the duel.`]),
+  ].join('\n');
+};
+
+export function lobbyComponents(gameId, spots, closesAtSec) {
+  return [
+    text(howToText(false)),
     text(`Player 1: ${spotLabel(spots[0])}\nPlayer 2: ${spotLabel(spots[1])}\n-# Lobby closes <t:${closesAtSec}:R>. The countdown starts when both spots are taken.`),
     {
       type: 1,
@@ -44,6 +48,12 @@ export function lobbyComponents(gameId, spots, closesAtSec) {
     },
   ];
 }
+
+// Solo practice: the instructions, then the countdown starts when the player presses Start.
+export const soloStartComponents = (gameId) => [
+  text(howToText(true)),
+  { type: 1, components: [button(3, 'Start', startId(gameId))] },
+];
 
 export const lobbyClosedComponents = () => [
   text('## 🃏 Lobby closed\nNobody took both spots in time. Run `/memorypoker` to start a new one.'),
@@ -149,6 +159,7 @@ function duelParts(players, result, deal, origin) {
 
 // A join button carries its spot (0 or 1) where other ids carry the round.
 export const joinId = (gameId, spot) => `mp:join:${gameId}:${spot}`;
+export const startId = (gameId) => `mp:start:${gameId}:0`;
 export const ppickId = (gameId, round, letter) => `mp:ppick:${gameId}:${round}:${letter}`;
 export const plockId = (gameId, round) => `mp:plock:${gameId}:${round}`;
 export const nextId = (gameId, round) => `mp:next:${gameId}:${round}`;

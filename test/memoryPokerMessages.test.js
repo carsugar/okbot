@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  cardLabel, lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
+  cardLabel, lobbyComponents, soloStartComponents, startId, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, readyStatus, pickerComponents, joinId, ppickId, plockId, nextId, parseId,
 } from '../src/memoryPokerMessages.js';
 
@@ -37,6 +37,21 @@ test('the lobby carries the instructions with the exact timings', () => {
   assert.match(t, /4\. Both hands are revealed\. The stronger poker hand wins the round\./);
   assert.match(t, /best of 5/i);
   assert.ok(t.includes('<t:1700000060:R>'));
+});
+
+test('solo shows the same instructions and a Start button, and no spots or lobby timer', () => {
+  const parts = soloStartComponents('123');
+  const t = flatTexts(parts);
+  assert.match(t, /# 🃏 Memory Poker/);
+  assert.match(t, /Memorize sixteen cards, then build the best five-card hand from two of them plus three shared cards\./);
+  assert.match(t, /1\. 16 cards are dealt face up on squares A to P\. You have 20 seconds to memorize them\./);
+  assert.match(t, /3\. You have 30 seconds to place your two markers/);
+  assert.match(t, /4\. Your hand is revealed, and you find out whether it was the best one on the board\./);
+  assert.doesNotMatch(t, /Player 1|Lobby|best of 5/i);
+  const buttons = rowButtons(parts);
+  assert.deepEqual(buttons.map((b) => b.label), ['Start']);
+  assert.equal(buttons[0].custom_id, startId('123'));
+  assert.deepEqual(parseId(startId('123')), { action: 'start', gameId: '123', round: 0, letter: '' });
 });
 
 test('the lobby shows who holds each spot and has one join button per spot', () => {

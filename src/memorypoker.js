@@ -7,7 +7,7 @@ import {
 } from './pokerGame.js';
 import { newLobby, claim, LOBBY_MS } from './pokerLobby.js';
 import {
-  lobbyComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
+  lobbyComponents, soloStartComponents, lobbyClosedComponents, countdownComponents, lockStatus, boardComponents, hiddenComponents,
   roundComponents, pickerComponents, parseId,
 } from './memoryPokerMessages.js';
 
@@ -85,9 +85,11 @@ export class MemoryPokerGame extends DurableObject {
   }
 
   async startSolo(userId, gameId, origin, appId, token) {
+    if ((await this.ctx.storage.get('state')) !== undefined) return { type: 'started' };
     const now = Date.now();
     await this.ctx.storage.put('meta', { gameId, origin, appId });
     await this.#startRound(newGame([userId], randomDeal(), now), token, { [userId]: token }, now);
+    return { type: 'ok' };
   }
 
   // A press on a square of a player's private grid places or removes a marker; an empty `letter`
@@ -292,11 +294,8 @@ export async function handleMemoryPokerCommand(interaction, env, origin) {
   const appId = interaction.application_id ?? env.DISCORD_APPLICATION_ID;
   const stub = gameStub(env, gameId);
 
-  if (solo) {
-    // Practice stays private, and starts counting down straight away.
-    await stub.startSolo(userId, gameId, origin, appId, interaction.token);
-    return componentsMessage(countdownComponents(COUNTDOWN_FROM, [userId], 1, { [userId]: 0 }), EPHEMERAL);
-  }
+  // Practice stays private: the instructions first, and the countdown starts on Start.
+  if (solo) return componentsMessage(soloStartComponents(gameId), EPHEMERAL);
   const { closesAt } = await stub.openLobby(gameId, origin, appId, interaction.token);
   return componentsMessage(lobbyComponents(gameId, [null, null], seconds(closesAt)));
 }
@@ -313,6 +312,13 @@ export async function handleMemoryPokerComponent(interaction, env, origin) {
     if (result.type === 'updated') return updateMessage(lobbyComponents(gameId, result.spots, seconds(result.closesAt)));
     if (result.type === 'started') return updateMessage(countdownComponents(COUNTDOWN_FROM, result.players, 1, result.wins));
     return refusal(result.type);
+  }
+
+  if (action === 'start') {
+    const appId = interaction.application_id ?? env.DISCORD_APPLICATION_ID;
+    const result = await stub.startSolo(userId, gameId, origin, appId, interaction.token);
+    if (result.type !== 'ok') return refusal(result.type);
+    return updateMessage(countdownComponents(COUNTDOWN_FROM, [userId], 1, { [userId]: 0 }));
   }
 
   if (action === 'ppick' || action === 'plock') {
