@@ -39,14 +39,15 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
   assert.equal(arrival.kind, 'card');
   assert.equal(arrival.tag, 'cdm-arrived');
   assert.equal(images(arrival)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(arrival), /Welcome to \*\*[^*]+\*\*!\n### WHO WANTS TO CLIMB/);
+  assert.match(cardText(arrival), /^## WHO WANTS TO CLIMB\nWelcome to \*\*[^*]+\*\*, the site of this leg.s roadblock!/);
   assert.doesNotMatch(cardText(arrival), /ROADBLOCK:/);
   assert.match(cardText(arrival), /Welcome to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(arrival), /`!RB-L3`/);
+  assert.match(cardText(arrival), /Only the racer who intends to complete this roadblock may use the command `!RB-L3`\. The other racer may not use the command, participate in the challenge, or help their partner in any capacity\. Breaking these rules will result in severe penalties\./);
   assert.equal(clue.kind, 'card');
   assert.equal(clue.tag, 'rb-l3');
   assert.equal(images(clue)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(clue), /^### WHO WANTS TO CLIMB\nClimb the wall\.$/);
+  assert.match(cardText(clue), /^## WHO WANTS TO CLIMB\nClimb the wall\.$/);
 });
 
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
