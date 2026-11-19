@@ -38,6 +38,10 @@ export const travel = {
   modalChoice: { key: 'transports', label: 'Ways to get there', options: TRANSPORTS, at: 3 },
   hint: 'Fill in the tag name to see the card.',
   extraPageLabel: 'Times and costs',
+  steps: (d) => [
+    { label: 'Details', done: Boolean(d.tagName) },
+    ...(d.dest && transportsOf(d).length ? [{ label: 'Times and costs', done: !travel.pending(d) }] : []),
+  ],
   // With a destination and ways to get there, the Travel tag needs each one's time and cost.
   pending: (d) => {
     const missing = d.dest ? transportsOf(d).filter((t) => !(d[`t_${t}`] ?? '').split('|')[0].trim()) : [];
@@ -46,6 +50,8 @@ export const travel = {
       : null;
   },
   initial: ({ tag }) => ({ tagName: tag ?? '', dest: '', extra: '', custom: '', transports: [] }),
+  // A short description of a saved clue, for the /edit_clue list.
+  describe: (d) => d.dest || d.tagName,
   draftKey: (d) => (d.tagName ? `travel:${d.tagName}` : null),
   ready: (d) => Boolean(d.tagName),
   menus: () => [],

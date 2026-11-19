@@ -192,3 +192,31 @@ test('every text box has a hint saying what to write there, short enough for Dis
     });
   }
 });
+
+test('detour is guided: details first, then one pop-up per side, with a checklist and a next step', () => {
+  const t = TEMPLATES.detour;
+  const blank = { ...t.initial({ leg: 4 }), touched: true };
+  assert.deepEqual(pagesOf(t, blank).map((p) => p.map((i) => i[0])), [['leg', 'location', 'image', 'switchTime'], ['name1', 'desc1'], ['name2', 'desc2']]);
+
+  const text = (d) => JSON.stringify(panelData(ID, t, d, ORIGIN));
+  const labels = (d) => buttons(panelData(ID, t, d, ORIGIN)).map((b) => b.label);
+  assert.match(text(blank), /⬜ Details · ⬜ Option 1 · ⬜ Option 2/);
+  assert.match(text(blank), /Next step:\*\* press \*\*Fill in details\*\*/);
+
+  const withLocation = { ...blank, location: 'San José' };
+  assert.match(text(withLocation), /✅ Details · ⬜ Option 1/);
+  assert.match(text(withLocation), /press \*\*Option 1\*\*/);
+  const style = (d, label) => buttons(panelData(ID, t, d, ORIGIN)).find((b) => b.label === label).style;
+  assert.equal(style(withLocation, 'Option 1'), 1);
+  assert.equal(style(withLocation, 'Option 2'), 2);
+
+  const one = { ...withLocation, name1: 'Mangled', desc1: 'Do it.' };
+  assert.match(text(one), /press \*\*Option 2\*\*/);
+  assert.deepEqual(labels(one), ['Edit details', 'Edit option 1', 'Option 2', 'Save and get tag to copy']);
+  assert.equal(saveButton(panelData(ID, t, one, ORIGIN)).disabled, true);
+
+  const done = { ...one, name2: 'Tangled', desc2: 'Do that.' };
+  assert.doesNotMatch(text(done), /Next step/);
+  assert.match(text(done), /✅ Details · ✅ Option 1 · ✅ Option 2/);
+  assert.equal(saveButton(panelData(ID, t, done, ORIGIN)).disabled, undefined);
+});

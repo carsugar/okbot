@@ -76,7 +76,6 @@ export const CREATE_CLUE_COMMAND = {
   contexts: [0],
   options: [
     { type: 3, name: 'type', description: 'Which kind of clue', required: true, choices: TEMPLATE_CHOICES },
-    { type: 4, name: 'leg', description: 'Leg number (for Leg Start, Roadblock, Detour, Pit Stop)', required: false },
   ],
 };
 

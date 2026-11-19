@@ -1,5 +1,5 @@
 import { bannerImage } from '../legStartCard.js';
-import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, tagOutput, initialsOf } from './common.js';
+import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, initialsOf } from './common.js';
 
 export const roadblock = {
   id: 'roadblock',
@@ -7,6 +7,8 @@ export const roadblock = {
   needs: [],
   hint: 'Fill in the title, location and clue to see the card.',
   initial: ({ leg }) => ({ leg: legStartValue(leg), title: '', location: '', image: '', clue: '' }),
+  // A short description of a saved clue, for the /edit_clue list.
+  describe: (d) => `${d.title} (${d.location})`,
   draftKey: (d) => (hasLeg(d) ? `roadblock:l${d.leg}` : null),
   ready: (d) => hasLeg(d) && Boolean(d.title && d.location && d.clue),
   menus: () => [],
@@ -44,7 +46,14 @@ export const roadblock = {
         title: `Roadblock: ${d.title}`,
         description: d.location,
       }),
-      tagOutput({ tag: `${TEST_PREFIX}rb-l${d.leg}`, label: `Roadblock clue (\`${clueCmd}\`)`, text: d.clue }),
+      cardOutput({
+        key: `roadblock:l${d.leg}:clue`,
+        tag: `${TEST_PREFIX}rb-l${d.leg}`,
+        label: `Roadblock clue (\`${clueCmd}\`)`,
+        embed: card([gallery(bannerImage(origin, 'roadblock')), text(`### ${title}`), text(d.clue)]),
+        title: `Roadblock: ${d.title}`,
+        description: d.location,
+      }),
     ];
   },
 };

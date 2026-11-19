@@ -30,6 +30,8 @@ export const legStart = {
   needs: [],
   hint: 'Fill in departure, destination and flight duration to see the card.',
   initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '' }),
+  // A short description of a saved clue, for the /edit_clue list.
+  describe: (d) => `${d.depCity} to ${d.destCity}`,
   draftKey: (d) => (hasLeg(d) ? `leg-${d.leg}` : null),
   // Legs saved by the first version of the editor have no stored draft, only the card data.
   legacy: { key: (d) => `leg-${d.leg}`, toDraft: draftFromSaved },

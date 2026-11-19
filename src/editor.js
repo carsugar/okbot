@@ -2,7 +2,7 @@ import { JsonResponse, sendFollowup } from './utils.js';
 import { embedBytes, MAX_EMBED_BYTES } from './routeEmbedPage.js';
 import { routeStore } from './routeStore.js';
 import { TEMPLATES } from './templates/index.js';
-import { tagOf, sameTag } from './clueTags.js';
+import { tagOf, sameTag, clueLabel } from './clueTags.js';
 import { outputBlock } from './templates/common.js';
 import { applyModal, applyMenu, editModal, panelData } from './editorPanel.js';
 
@@ -17,7 +17,7 @@ function panel(type, id, template, draft, origin, status = '', extraFlags = 0) {
 }
 const privately = (content) => new JsonResponse({ type: 4, data: { content, flags: EPHEMERAL } });
 
-// A new clue. `opts.leg` is the leg number from the command, if given; the pop-up asks otherwise.
+// A new clue. The pop-up asks for the leg number or tag name.
 export async function openEditor(interaction, env, origin, type, opts) {
   const template = TEMPLATES[type];
   if (!template) return privately('Unknown clue type.');
@@ -43,10 +43,11 @@ export async function editSaved(interaction, env, origin, tag) {
 export async function tagSuggestions(interaction, env) {
   const typed = (interaction.data.options?.find((o) => o.focused)?.value ?? '').toLowerCase();
   const choices = (await savedClues(env, interaction.guild_id))
-    .filter((c) => c.tag.toLowerCase().includes(typed))
-    .sort((a, b) => a.tag.localeCompare(b.tag))
+    .map((c) => ({ ...c, name: clueLabel(c.draft) }))
+    .filter((c) => `${c.name} ${c.tag}`.toLowerCase().includes(typed))
+    .sort((a, b) => (Number(a.draft.leg) || 0) - (Number(b.draft.leg) || 0) || a.name.localeCompare(b.name))
     .slice(0, 25)
-    .map((c) => ({ name: `${c.tag} · ${TEMPLATES[c.draft.type].label}`.slice(0, 100), value: c.tag.slice(0, 100) }));
+    .map((c) => ({ name: c.name, value: c.tag.slice(0, 100) }));
   return new JsonResponse({ type: 8, data: { choices } });
 }
 

@@ -15,7 +15,7 @@ test('create_clue offers every template as a choice and only needs the type', ()
   const type = CREATE_CLUE_COMMAND.options.find((o) => o.name === 'type');
   assert.equal(type.required, true);
   assert.equal(type.choices.length, 6);
-  assert.ok(CREATE_CLUE_COMMAND.options.filter((o) => o.name !== 'type').every((o) => !o.required));
+  assert.deepEqual(CREATE_CLUE_COMMAND.options.map((o) => o.name), ['type']);
 });
 
 test('task makes one card tag from the tag name and description', () => {
@@ -34,7 +34,7 @@ test('pit stop title spells out the leg as an ordinal and names the season', () 
   assert.deepEqual(images(run('pitstop', { location: 'Plaza', season: '4' }, { leg: 1 })[0]), [`${ORIGIN}/img/pit-stop.webp?v=2`]);
 });
 
-test('roadblock makes an arrival card and a plain clue tag', () => {
+test('roadblock makes an arrival card and a clue card with the banner and title', () => {
   const [arrival, clue] = run('roadblock', { title: 'Who wants to climb', location: 'Cajón Del Maipo', clue: 'Climb the wall.', image: 'https://x.dev/c.png' });
   assert.equal(arrival.kind, 'card');
   assert.equal(arrival.tag, 'test-cdm-arrived');
@@ -43,9 +43,10 @@ test('roadblock makes an arrival card and a plain clue tag', () => {
   assert.doesNotMatch(cardText(arrival), /ROADBLOCK:/);
   assert.match(cardText(arrival), /Welcome to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(arrival), /`!RB-L3`/);
-  assert.equal(clue.kind, 'tag');
+  assert.equal(clue.kind, 'card');
   assert.equal(clue.tag, 'test-rb-l3');
-  assert.equal(clue.text, 'Climb the wall.');
+  assert.equal(images(clue)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
+  assert.match(cardText(clue), /^### WHO WANTS TO CLIMB\nClimb the wall\.$/);
 });
 
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
@@ -102,7 +103,8 @@ test('output blocks show the tag text with the link for cards, plain text for ta
   const card = outputBlock(arrival, 'https://okbot.example.dev/route/abc');
   assert.match(card, /tag \+ test-ab-arrived \[.*\]\(https:\/\/okbot\.example\.dev\/route\/abc\?v=\{unix\}\)/);
   assert.match(card, /Preview: https:\/\/okbot\.example\.dev\/route\/abc/);
-  assert.match(outputBlock(clue, ''), /tag \+ test-rb-l3 Do it\./);
+  assert.match(outputBlock(clue, 'https://okbot.example.dev/route/def'), /tag \+ test-rb-l3 \[.*\]\(https:\/\/okbot\.example\.dev\/route\/def\?v=\{unix\}\)/);
+  assert.match(outputBlock({ kind: 'tag', tag: 'test-x', label: 'L', text: 'Do it.' }, ''), /tag \+ test-x Do it\./);
 });
 
 test('every card from a full draft fits the link-preview limit', () => {

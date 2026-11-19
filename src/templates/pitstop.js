@@ -8,6 +8,8 @@ export const pitstop = {
   needs: [],
   hint: 'Fill in the location and season to see the card.',
   initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', season: '4' }),
+  // A short description of a saved clue, for the /edit_clue list.
+  describe: (d) => d.location,
   draftKey: (d) => (hasLeg(d) ? `pitstop:l${d.leg}` : null),
   ready: (d) => hasLeg(d) && Boolean(d.location && d.season),
   menus: () => [],

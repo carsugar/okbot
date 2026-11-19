@@ -7,6 +7,8 @@ export const task = {
   needs: [],
   hint: 'Fill in the tag name and the task description to see the card.',
   initial: ({ tag }) => ({ tagName: tag ?? '', body: '' }),
+  // A short description of a saved clue, for the /edit_clue list.
+  describe: (d) => d.body.length > 40 ? `${d.body.slice(0, 40)}…` : d.body,
   draftKey: (d) => (d.tagName ? `task:${d.tagName}` : null),
   ready: (d) => Boolean(d.tagName && d.body),
   menus: () => [],

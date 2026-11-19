@@ -38,7 +38,7 @@ export const modalPages = (template, draft) => {
       continue;
     }
     flush();
-    chunk(section.inputs, section.perPage).forEach((inputs) => pages.push({ inputs }));
+    chunk(section.inputs, section.perPage).forEach((inputs) => pages.push({ inputs, pageLabel: section.pageLabel }));
   }
   flush();
   return pages;
@@ -110,10 +110,15 @@ export function panelData(draftId, template, draft, origin, status = '') {
   // "Edit" only once there is something to edit; before that the button says to fill it in.
   const pages = modalPages(template, draft);
   const fieldsLabel = !draft.touched ? 'Fill in details' : pages.length === 1 ? 'Edit' : 'Edit details';
-  const editLabel = (i) => (i === 0 ? fieldsLabel : (template.extraPageLabel ?? 'More details'));
+  const editLabel = (i) => {
+    if (i === 0) return fieldsLabel;
+    const own = pages[i].pageLabel;
+    return (typeof own === 'function' ? own(draft) : own) ?? template.extraPageLabel ?? 'More details';
+  };
   // A step the card cannot be saved without, like Travel's times and costs: its button is
   // highlighted, the message says what to do, and Save waits.
-  const pending = ready ? (template.pending?.(draft) ?? null) : null;
+  const pending = template.pending?.(draft) ?? null;
+  const steps = template.steps?.(draft) ?? [];
   const editButtons = pages.map((_, i) => button(pending?.page === i ? 1 : 2, editLabel(i), `${id('edit')}:${i}`));
   const menuRows = template.menus(draft).map((m) => ({
     type: 1,
@@ -136,6 +141,7 @@ export function panelData(draftId, template, draft, origin, status = '') {
       ...(cards[0] ? [cards[0].embed.component] : []),
       text(counter),
       ...(status ? [text(status)] : []),
+      ...(steps.length ? [text(`-# ${steps.map((st) => `${st.done ? '✅' : '⬜'} ${st.label}`).join(' · ')}`)] : []),
       ...(pending ? [text(`**Next step:** ${pending.message}`)] : []),
       ...menuRows,
       { type: 1, components: [...editButtons, button(3, 'Save and get tag to copy', id('save'), ...(!ready || tooLong || pending ? [{ disabled: true }] : []))] },

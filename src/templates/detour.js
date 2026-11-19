@@ -9,8 +9,22 @@ export const detour = {
   id: 'detour',
   label: 'Detour',
   needs: [],
-  hint: 'Fill in the location and both sides to see the cards.',
+  hint: 'Work through the steps below to see the cards.',
+  // The checklist and what to do next: general details, then each side of the detour.
+  steps: (d) => [
+    { label: 'Details', done: Boolean(hasLeg(d) && d.location) },
+    { label: 'Option 1', done: Boolean(d.name1 && d.desc1) },
+    { label: 'Option 2', done: Boolean(d.name2 && d.desc2) },
+  ],
+  pending: (d) => {
+    if (!hasLeg(d) || !d.location) return { page: 0, message: 'press **Fill in details** and enter the leg number and the location.' };
+    if (!d.name1 || !d.desc1) return { page: 1, message: 'press **Option 1** and enter its name and description.' };
+    if (!d.name2 || !d.desc2) return { page: 2, message: 'press **Option 2** and enter its name and description.' };
+    return null;
+  },
   initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', name1: '', desc1: '', name2: '', desc2: '' }),
+  // A short description of a saved clue, for the /edit_clue list.
+  describe: (d) => d.location,
   draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
   ready: (d) => hasLeg(d) && Boolean(d.location && d.name1 && d.desc1 && d.name2 && d.desc2),
   menus: () => [],
@@ -28,6 +42,8 @@ export const detour = {
     {
       id: 'side1',
       title: 'Option 1',
+      perPage: 2, // each side of the detour gets a pop-up of its own
+      pageLabel: (d) => (d.name1 && d.desc1 ? 'Edit option 1' : 'Option 1'),
       inputs: [
         ['name1', 'Option 1 name', 50, true, undefined, 'e.g. Mangled'],
         ['desc1', 'Option 1 description', 1500, true, 'paragraph', 'Describe option 1 task...'],
@@ -36,6 +52,8 @@ export const detour = {
     {
       id: 'side2',
       title: 'Option 2',
+      perPage: 2,
+      pageLabel: (d) => (d.name2 && d.desc2 ? 'Edit option 2' : 'Option 2'),
       inputs: [
         ['name2', 'Option 2 name', 50, true, undefined, 'e.g. Tangled'],
         ['desc2', 'Option 2 description', 1500, true, 'paragraph', 'Describe option 2 task...'],

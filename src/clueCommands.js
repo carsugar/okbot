@@ -2,8 +2,8 @@ import { openEditor, editSaved, tagSuggestions } from './editor.js';
 
 // /create_clue starts a new clue of any type; /edit_clue reopens a saved one by its tag.
 export function handleCreateClueCommand(interaction, env, origin) {
-  const get = (name) => interaction.data.options?.find((o) => o.name === name)?.value;
-  return openEditor(interaction, env, origin, get('type'), { leg: get('leg') });
+  const type = interaction.data.options?.find((o) => o.name === 'type')?.value;
+  return openEditor(interaction, env, origin, type, {});
 }
 
 export function handleEditClueCommand(interaction, env, origin) {
