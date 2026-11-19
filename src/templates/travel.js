@@ -10,15 +10,25 @@ export const TRANSPORTS = [
 ];
 export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// The custom transport box holds an emoji and a name, like "🛺 tuk tuk". Without an emoji the
-// map is used.
+// The custom transport has a name, and an emoji of its own on the times and costs pop-up
+// (blank gives the map). An emoji typed in front of the name still counts, like "🛺 tuk tuk".
 const EMOJI_START = /^(\p{Extended_Pictographic}[\p{Extended_Pictographic}\uFE0F\u200D]*)\s*/u;
 export function customParts(raw = '') {
   const value = raw.trim();
   const emoji = value.match(EMOJI_START)?.[1] ?? '';
   return { emoji, name: value.slice(emoji.length).trim() };
 }
-export const CUSTOM_BOX = ['custom', 'Custom transport: emoji, name (if ticked)', 50, false, undefined, 'e.g. 🛺 tuk tuk'];
+export const CUSTOM_BOX = ['custom', 'Custom transport name (if ticked)', 50, false, undefined, 'e.g. tuk tuk, railcar'];
+// The boxes on the times and costs pop-up: a time and cost for each way, then the emoji box
+// for the custom one.
+export const costInputs = (d) => [
+  ...transportsOf(d).map((t) => [`t_${t}`, `${cap(t)}: time, cost`, 150, false, undefined, 'e.g. 40 to 50 minutes, $20']),
+  ...(customParts(d.custom).name && (d.transports ?? []).includes('custom')
+    ? [['customEmoji', `Emoji for ${customParts(d.custom).name}`.slice(0, 45), 16, false, undefined, 'e.g. 🛺', 'Paste one emoji, like 🛺 (copy it from your emoji keyboard). Blank gives 🗺️.']]
+    : []),
+];
+// The emoji for the custom transport: its own box, else one typed before the name.
+export const customEmojiOf = (d) => customParts(d.customEmoji).emoji || customParts(d.custom).emoji;
 
 // The chosen transports, then the custom one if there is one. Costs are asked for at most five.
 export const transportsOf = (d) => {
@@ -74,7 +84,7 @@ export const travel = {
       ? { page: 1, message: `press **Times and costs** and enter the time (and cost) for ${humanJoin(missing)}. The Travel tag and its commands need them.` }
       : null;
   },
-  initial: ({ tag }) => ({ tagName: tag ?? '', dest: '', extra: '', custom: '', transports: [] }),
+  initial: ({ tag }) => ({ tagName: tag ?? '', dest: '', extra: '', custom: '', customEmoji: '', transports: [] }),
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => d.dest || d.tagName,
   draftKey: (d) => (d.tagName ? `travel:${d.tagName}` : null),
@@ -97,7 +107,7 @@ export const travel = {
             id: 'costs',
             title: 'Times and costs',
             // One box per transport, so all of them fit on one pop-up (four at most).
-            inputs: transportsOf(d).map((t) => [`t_${t}`, `${cap(t)}: time, cost`, 150, false, undefined, 'e.g. 40 to 50 minutes, $20']),
+            inputs: costInputs(d),
           },
         ]
       : []),
@@ -142,8 +152,7 @@ export const travel = {
           embed: card([
             text('# TRAVEL INFO'),
             ...entries.flatMap(({ option, duration, cost }) => {
-              const custom = customParts(d.custom);
-              const emoji = (option === custom.name && custom.emoji) || TRAVEL_EMOJIS[option.toLowerCase()] || '🗺️';
+              const emoji = (option === customParts(d.custom).name && customEmojiOf(d)) || TRAVEL_EMOJIS[option.toLowerCase()] || '🗺️';
               const label = TRAVEL_DURATION_LABELS[option.toLowerCase()] || 'Duration';
               return [text(`## ${emoji}  **__${option.toUpperCase()}__**  ${emoji}\n*${label}: ${duration}*\n*Cost: ${cost || '$0'}*`)];
             }),

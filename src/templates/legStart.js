@@ -1,5 +1,5 @@
 import { parseLegStart, legStartEmbed, bannerImage, mimuAutoresponder, flightParagraph } from '../legStartCard.js';
-import { TRANSPORTS, CUSTOM_BOX, cap, transportsOf, parseTimeCost, touchdownOutputs } from './travel.js';
+import { TRANSPORTS, CUSTOM_BOX, costInputs, transportsOf, parseTimeCost, touchdownOutputs } from './travel.js';
 import { humanJoin } from '../tagTemplates.js';
 import { hasLeg, legField, legStartValue, TEST_PREFIX, cardOutput, extraOutput } from './common.js';
 
@@ -35,7 +35,7 @@ export const legStart = {
   label: 'Route Info: Leg Start',
   needs: [],
   hint: 'Fill in the steps below to see the card.',
-  initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '', flightText: '', airportImage: '', custom: '', extra: '', transports: [] }),
+  initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '', flightText: '', airportImage: '', custom: '', customEmoji: '', extra: '', transports: [] }),
   // Shown in the flight text box until it is changed. Left as it is, the card keeps following
   // the flight duration and destination.
   prefill: (d) => (d.flightTime && d.destCity ? { flightText: flightParagraph(draftToLeg({ ...d, flightText: '' })) } : {}),
@@ -113,7 +113,7 @@ export const legStart = {
           title: 'Times and costs',
           perPage: 5,
           pageLabel: 'Times and costs',
-          inputs: transportsOf(d).map((t) => [`t_${t}`, `${cap(t)}: time, cost`, 150, false, undefined, 'e.g. 40 to 50 minutes, $20']),
+          inputs: costInputs(d),
         }]
       : []),
     {

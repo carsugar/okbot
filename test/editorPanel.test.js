@@ -129,12 +129,12 @@ test('ticking boxes and submitting the first travel pop-up sets the transports',
   assert.equal(next.tagName, 'cdm');
 });
 
-test('all the times and costs share one pop-up, one box per transport', () => {
+test('all the times and costs share one pop-up, one box per transport and one for the custom emoji', () => {
   const travel = TEMPLATES.travel;
   assert.equal(modalPages(travel, travel.initial({ tag: 'x' })).length, 1);
   const all = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus', 'walking', 'custom'], custom: 'tuk tuk' };
   assert.equal(modalPages(travel, all).length, 2);
-  assert.deepEqual(pagesOf(travel, all)[1].map((i) => i[0]), ['t_taxi', 't_bus', 't_walking', 't_tuk tuk']);
+  assert.deepEqual(pagesOf(travel, all)[1].map((i) => i[0]), ['t_taxi', 't_bus', 't_walking', 't_tuk tuk', 'customEmoji']);
   const two = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus'] };
   assert.deepEqual(pagesOf(travel, two)[1].map((i) => i[0]), ['t_taxi', 't_bus']);
 });

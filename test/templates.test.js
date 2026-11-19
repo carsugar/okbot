@@ -211,13 +211,15 @@ test('roadblock and detour body text is italic, headings are not', () => {
   for (const o of rb) for (const l of lines(o)) assert.ok(/^\*.*\*$/.test(l), l);
 });
 
-test('the custom travel option takes an emoji and a name, and the emoji is used on the Travel Info card', () => {
-  const d = { tagName: 'mg', dest: 'Mirabell Gardens', transports: ['taxi', 'custom'], custom: '🛺 tuk tuk', t_taxi: '10 min, $5', t_tuk: '', 't_tuk tuk': '20 min, $2' };
+test('the custom travel option has its own emoji box (or an emoji before the name), used on the Travel Info card', () => {
+  const d = { tagName: 'mg', dest: 'Mirabell Gardens', transports: ['taxi', 'custom'], custom: 'tuk tuk', customEmoji: '🛺', t_taxi: '10 min, $5', t_tuk: '', 't_tuk tuk': '20 min, $2' };
   const out = run('travel', d);
   const info = out.find((o) => o.key === 'travel:mg:info');
   const all = info.embed.component.components.map((c) => c.content ?? '').join('\n');
   assert.match(all, /## 🛺  \*\*__TUK TUK__\*\*  🛺/);
   assert.match(out[0].embed.component.components.map((c) => c.content ?? '').join('\n'), /by taxi or tuk tuk/);
-  const plain = run('travel', { ...d, custom: 'tuk tuk' }).find((o) => o.key === 'travel:mg:info');
+  const typed = run('travel', { ...d, customEmoji: '', custom: '🛺 tuk tuk' }).find((o) => o.key === 'travel:mg:info');
+  assert.match(typed.embed.component.components.map((c) => c.content ?? '').join('\n'), /## 🛺  /);
+  const plain = run('travel', { ...d, customEmoji: '' }).find((o) => o.key === 'travel:mg:info');
   assert.match(plain.embed.component.components.map((c) => c.content ?? '').join('\n'), /## 🗺️  \*\*__TUK TUK__\*\*  🗺️/);
 });
