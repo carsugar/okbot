@@ -62,8 +62,9 @@ async function savedDraft(store, guildId, template, draft) {
 
 // The big heading at the top of the tags to copy.
 const copyHeading = (count) =>
-  `# Copy and send ${count > 1 ? `these ${count} tags` : 'this tag'} to create ${count > 1 ? 'them' : 'it'}\n` +
-  `**No tags have been created yet.** ${count > 1 ? 'Copy each numbered block below and send it in the channel as its own message.' : 'Copy the block below and send it in the channel.'}`;
+  `# ⚠️ Copy and send ${count > 1 ? `these ${count} tags` : 'this tag'} to create ${count > 1 ? 'them' : 'it'} ⚠️\n` +
+  `## No tags have been created yet\n` +
+  `${count > 1 ? '👇 Copy each numbered block below and send it as its own message.' : '👇 Copy the block below and send it.'}`;
 
 async function save(interaction, env, ctx, origin, id, template, draft) {
   const outputs = template.ready(draft) ? template.outputs(draft, origin) : [];
