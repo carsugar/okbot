@@ -2,8 +2,8 @@
 import { legTagText, accentFor } from '../legStartCard.js';
 
 export const CARLBOT_MENTION = '<@235148962103951360>';
-// Staging tags all start with this so they never collide with the real ones.
-export const TEST_PREFIX = 'test-';
+// Tags used to start with test- while staging. Now they are the real names.
+export const TEST_PREFIX = '';
 
 export const text = (content) => ({ type: 10, content });
 // Leg-based templates ask for the leg number in the pop-up, as its first field.

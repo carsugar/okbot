@@ -5,9 +5,9 @@ import { TEMPLATES } from '../src/templates/index.js';
 
 test('the main tag of a saved clue is worked out from its draft', () => {
   const pit = { ...TEMPLATES.pitstop.initial({ leg: 3 }), type: 'pitstop', location: 'Plaza', season: '4' };
-  assert.equal(tagOf(pit), 'test-pitstop-l3');
+  assert.equal(tagOf(pit), 'pitstop-l3');
   const task = { ...TEMPLATES.task.initial({}), type: 'task', tagName: 'Find Statue', body: 'x' };
-  assert.equal(tagOf(task), 'test-Find-Statue');
+  assert.equal(tagOf(task), 'Find-Statue');
 });
 
 test('a draft that is not ready, or of an unknown type, has no tag', () => {
@@ -17,9 +17,9 @@ test('a draft that is not ready, or of an unknown type, has no tag', () => {
 });
 
 test('a tag matches with or without the test- prefix and in any case', () => {
-  assert.ok(sameTag('test-pitstop-l3', 'pitstop-l3'));
+  assert.ok(sameTag('pitstop-l3', 'pitstop-l3'));
   assert.ok(sameTag('test-Find-Statue', 'TEST-find-statue'));
-  assert.ok(!sameTag('test-pitstop-l3', 'pitstop-l4'));
+  assert.ok(!sameTag('pitstop-l3', 'pitstop-l4'));
 });
 
 test('a saved clue reads with its leg, kind and what it is about', () => {

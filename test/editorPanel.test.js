@@ -13,9 +13,9 @@ const readyLeg = () => ({
   depCity: 'Machu Picchu, Peru', depImage: 'https://example.com/dep.png',
   destCity: 'Santiago, Chile', site: 'Cajón del Maipo', airport: 'SCL Airport', money: '$15', flightTime: '3 hours',
 });
-const flat = (panel) => panel.components.flatMap((c) => (c.type === 1 ? c.components : [c]));
+const flat = (panel) => panel.components.flatMap((c) => (c.type === 1 ? c.components : c.type === 9 ? [c.accessory] : [c]));
 const buttons = (panel) => flat(panel).filter((c) => c.type === 2);
-const plain = (p) => p.components.filter((c) => c.type === 10).map((c) => c.content).join('\n');
+const plain = (p) => p.components.flatMap((c) => (c.type === 9 ? c.components : [c])).filter((c) => c.type === 10).map((c) => c.content).join('\n');
 const pagesOf = (t, d) => modalPages(t, d).map((p) => p.inputs);
 const saveButton = (panel) => buttons(panel).find((b) => b.custom_id.startsWith('le:save:'));
 
@@ -160,24 +160,24 @@ test('the pop-up always has the leg number field, so it can be changed later', (
   assert.equal(pagesOf(t, t.initial({ leg: 3 }))[0][0][0], 'leg');
 });
 
-test('the first button says Fill in details until something has been entered, then Edit', () => {
+test('each step has one button: Fill in until it is done, then Edit, Customize for optional steps; Save is last', () => {
   const labels = (t, d) => buttons(panelData(ID, t, d, ORIGIN)).map((b) => b.label);
   const t = TEMPLATES.pitstop;
-  assert.deepEqual(labels(t, t.initial({ leg: 1 })), ['Fill in details', 'Save and get tag to copy']);
-  assert.deepEqual(labels(t, { ...t.initial({ leg: 1 }), touched: true }), ['Edit', 'Save and get tag to copy']);
-  assert.deepEqual(labels(leg, readyLeg()), ['1. Departure & destination', '2. Airport, money & flight', '3. Customize text', 'Save and get tag to copy']);
+  assert.deepEqual(labels(t, t.initial({ leg: 1 })), ['Fill in', 'Save']);
+  assert.deepEqual(labels(t, { ...t.initial({ leg: 1 }), location: 'Plaza', touched: true }), ['Edit', 'Save']);
+  assert.deepEqual(labels(leg, readyLeg()), ['Edit', 'Edit', 'Customize', 'Save']);
 });
 
 test('travel with a destination and transports needs the times and costs: highlighted button, message, Save waits', () => {
   const t = TEMPLATES.travel;
   const base = { ...t.initial({ tag: 'cdm' }), dest: 'Plaza', transports: ['taxi', 'bus'], touched: true };
   const p = panelData(ID, t, base, ORIGIN);
-  const costs = buttons(p).find((b) => b.label === '2. Times and costs');
-  assert.equal(costs.style, 1);
-  assert.match(JSON.stringify(p), /Next step:\*\* press \*\*Times and costs\*\*.*taxi or bus/);
+  const edit = (panel, i) => buttons(panel).find((b) => b.custom_id.endsWith(`:${i}`));
+  assert.equal(edit(p, 1).style, 1);
+  assert.match(plain(p), /2\. Times and costs/);
   assert.equal(saveButton(p).disabled, true);
   const done = panelData(ID, t, { ...base, t_taxi: '30 min', c_taxi: '$20', t_bus: '1 hour', c_bus: '$5' }, ORIGIN);
-  assert.equal(buttons(done).find((b) => b.label === '2. Times and costs').style, 2);
+  assert.equal(edit(done, 1).style, 2);
   assert.equal(saveButton(done).disabled, undefined);
   assert.equal(saveButton(panelData(ID, t, { ...base, dest: '' }, ORIGIN)).disabled, undefined);
 });
@@ -204,25 +204,24 @@ test('detour is guided: details, then a pop-up per option with five boxes, a che
   ]);
 
   const text = (d) => plain(panelData(ID, t, d, ORIGIN));
-  const buttonsOf = (d) => buttons(panelData(ID, t, d, ORIGIN));
-  assert.match(text(blank), /1\. 👉 Details\n2\. ⬜ Option 1\n3\. ⬜ Option 2\n4\. ⬜ Save and get the tag to copy/);
-  assert.match(text(blank), /Next step:\*\* press \*\*1\. Fill in details\*\*|Next step:\*\* press \*\*Fill in details\*\*/);
+  const edit = (d, i) => buttons(panelData(ID, t, d, ORIGIN)).find((b) => b.custom_id.endsWith(`:${i}`));
+  assert.match(text(blank), /👉 \*\*1\. Details\*\*[^]*⬜ \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*[^]*⬜ \*\*4\. Save\*\*/);
+  assert.match(text(blank), /Go down the list\.\*\* Press the blue button/);
+  assert.equal(edit(blank, 0).style, 1);
 
   const withLocation = { ...blank, location: 'San José' };
-  assert.match(text(withLocation), /1\. ✅ Details\n2\. 👉 Option 1\n3\. ⬜ Option 2/);
-  assert.match(text(withLocation), /press \*\*Option 1\*\* and fill in its name, travel time, location and what happens there/);
-  assert.equal(buttonsOf(withLocation).find((b) => b.label === '2. Option 1').style, 1);
-  assert.equal(buttonsOf(withLocation).find((b) => b.label === '3. Option 2').style, 2);
+  assert.match(text(withLocation), /✅ \*\*1\. Details\*\*[^]*👉 \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*/);
+  assert.equal(edit(withLocation, 1).style, 1);
+  assert.equal(edit(withLocation, 2).style, 2);
   assert.equal(saveButton(panelData(ID, t, withLocation, ORIGIN)).disabled, true);
 
   const one = { ...withLocation, name1: 'Mangled', time1: '5 minutes', loc1: 'Plaza', desc1: 'where they do it.' };
-  assert.match(text(one), /1\. ✅ Details\n2\. ✅ Option 1\n3\. 👉 Option 2/);
-  assert.match(text(one), /press \*\*Option 2\*\*/);
-  assert.equal(buttonsOf(one).find((b) => b.label === '3. Option 2').style, 1);
+  assert.match(text(one), /✅ \*\*2\. Option 1\*\*[^]*👉 \*\*3\. Option 2\*\*/);
+  assert.equal(edit(one, 2).style, 1);
 
   const done = { ...one, name2: 'Tangled', time2: '6 minutes', loc2: 'Park', desc2: 'where they do that.' };
-  assert.doesNotMatch(text(done), /Next step/);
-  assert.deepEqual(buttonsOf(done).map((b) => b.label), ['1. Edit details', '2. Edit option 1', '3. Edit option 2', 'Save and get tag to copy']);
+  assert.match(text(done), /All set\.\*\* Press \*\*Save\*\*/);
+  assert.deepEqual(buttons(panelData(ID, t, done, ORIGIN)).map((b) => b.label), ['Edit', 'Edit', 'Edit', 'Save']);
   assert.equal(saveButton(panelData(ID, t, done, ORIGIN)).disabled, undefined);
 });
 
@@ -248,21 +247,20 @@ test('leg start: three steps, the usual flight text shown up front, and a clear 
     ['leg', 'depCity', 'depImage', 'destCity', 'site'], ['airport', 'money', 'flightTime'], ['flightText'],
   ]);
   const text = (d) => plain(panelData(ID, leg, d, ORIGIN));
-  assert.match(text(blank), /1\. 👉 Departure & destination\n2\. ⬜ Airport, money & flight\n3\. ➖ Customize text \(optional\)\n4\. ⬜ Save and get the tag to copy/);
-  assert.match(text(blank), /Next step:\*\* press \*\*Departure & destination\*\*/);
+  assert.match(text(blank), /👉 \*\*1\. Departure & destination\*\*[^]*⬜ \*\*2\. Airport, money & flight\*\*[^]*➖ \*\*3\. Customize text\*\* \(optional\)[^]*⬜ \*\*4\. Save\*\*/);
   assert.match(text(blank), /usual flight text shows here once/);
 
   const route = { ...blank, depCity: 'Salzburg, Austria', destCity: 'Vienna, Austria', site: 'Mirabell Gardens' };
-  assert.match(text(route), /press \*\*Airport, money & flight\*\*/);
+  assert.match(text(route), /👉 \*\*2\. Airport, money & flight/);
 
   const flight = { ...route, flightTime: '2 hour 35 min' };
-  assert.match(text(flight), /Flight text \(the usual\):\*\*\n> All teams will be put onto the same, equalizing \*\*2 hour 35 min flight\*\* to Austria\. Once there, make your way to \*\*Mirabell Gardens\*\*/);
-  assert.doesNotMatch(text(flight), /Next step/);
+  assert.match(text(flight), /Usual text: All teams will be put onto the same, equalizing \*\*2 hour 35 min flight\*\* to Austria\. Once there, make your way to \*\*Mirabell Gardens\*\*/);
+  assert.match(text(flight), /All set\./);
   assert.equal(saveButton(panelData(ID, leg, flight, ORIGIN)).disabled, undefined);
 
   const custom = { ...flight, flightText: 'Teams fly separately.' };
-  assert.match(text(custom), /using your own wording/);
-  assert.match(text(custom), /3\. ✅ Customize text/);
+  assert.match(text(custom), /Using your own wording/);
+  assert.match(text(custom), /✅ \*\*3\. Customize text/);
 });
 
 test('the leg start customize pop-up opens showing the usual text', () => {
@@ -272,25 +270,24 @@ test('the leg start customize pop-up opens showing the usual text', () => {
   assert.match(box.value, /^All teams will be put onto the same, equalizing/);
 });
 
-test('every clue type shows a numbered checklist ending with saving, and numbered buttons when there are several pop-ups', () => {
+test('every clue type lists numbered steps, each with its own button, ending with Save', () => {
   for (const t of Object.values(TEMPLATES)) {
     const d = { ...t.initial({ leg: 1, tag: 'x' }), transports: ['taxi'], dest: 'P' };
     const p = panelData(ID, t, d, ORIGIN);
-    const list = plain(p).split('\n').filter((l) => /^\d+\. /.test(l));
-    assert.ok(list.length >= 2, t.id);
-    assert.match(list.at(-1), /^\d+\. [⬜👉] Save and get the tag to copy$/, t.id);
-    list.forEach((line, i) => assert.ok(line.startsWith(`${i + 1}. `), `${t.id} ${line}`));
-    const edits = buttons(p).filter((b) => b.custom_id.startsWith('le:edit:'));
-    if (edits.length > 1) edits.forEach((b, i) => assert.ok(b.label.startsWith(`${i + 1}. `), `${t.id} ${b.label}`));
+    const rows = p.components.filter((c) => c.type === 9);
+    assert.ok(rows.length >= 2, t.id);
+    rows.forEach((r, i) => assert.match(r.components[0].content, new RegExp(`\\*\\*${i + 1}\\. `), `${t.id} ${i}`));
+    assert.match(rows.at(-1).components[0].content, /\*\*\d+\. Save\*\*/, t.id);
+    assert.equal(rows.at(-1).accessory.custom_id.startsWith('le:save:'), true, t.id);
   }
 });
 
 test('a single-pop-up clue lists its fill-in step first and saving last', () => {
   const t = TEMPLATES.pitstop;
   const blank = plain(panelData(ID, t, t.initial({ leg: 3 }), ORIGIN));
-  assert.match(blank, /1\. 👉 Details\n2\. ⬜ Save/);
+  assert.match(blank, /👉 \*\*1\. Details\*\*[^]*⬜ \*\*2\. Save/);
   const done = plain(panelData(ID, t, { ...t.initial({ leg: 3 }), location: 'Plaza', touched: true }, ORIGIN));
-  assert.match(done, /1\. ✅ Details\n2\. 👉 Save/);
+  assert.match(done, /✅ \*\*1\. Details\*\*[^]*👉 \*\*2\. Save/);
 });
 
 test('what a save leaves to copy is the very last thing on the panel, below the buttons', () => {
@@ -298,7 +295,7 @@ test('what a save leaves to copy is the very last thing on the panel, below the 
   const d = { ...t.initial({ leg: 3 }), location: 'Plaza', touched: true };
   const p = panelData(ID, t, d, ORIGIN, '', '**Saved, but nothing has been posted.** copy the tag');
   assert.equal(p.components.at(-1).content, '**Saved, but nothing has been posted.** copy the tag');
-  assert.equal(p.components.at(-2).type, 1);
+  assert.equal(p.components.at(-2).type, 9);
   assert.ok(!plain(panelData(ID, t, d, ORIGIN)).includes('Saved, but'));
 });
 

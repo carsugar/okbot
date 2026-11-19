@@ -38,16 +38,10 @@ export const detour = {
   hint: 'Work through the steps below to see the cards.',
   // The checklist and what to do next: general details, then each side of the detour.
   steps: (d) => [
-    { label: 'Details', done: Boolean(hasLeg(d) && d.location) },
-    { label: 'Option 1', done: sideDone(d, 1) },
-    { label: 'Option 2', done: sideDone(d, 2) },
+    { label: 'Details', detail: 'Leg number, location, image, switch time', done: Boolean(hasLeg(d) && d.location) },
+    { label: 'Option 1', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 1) },
+    { label: 'Option 2', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 2) },
   ],
-  pending: (d) => {
-    if (!hasLeg(d) || !d.location) return { page: 0, message: 'press **Fill in details** and enter the leg number and the area.' };
-    if (!sideDone(d, 1)) return { page: 1, message: 'press **Option 1** and fill in its name, travel time, location and what happens there.' };
-    if (!sideDone(d, 2)) return { page: 2, message: 'press **Option 2** and fill in its name, travel time, location and what happens there.' };
-    return null;
-  },
   initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => d.location,
@@ -80,7 +74,6 @@ export const detour = {
         label: `Option ${n}: ${name}`,
         embed: card([
           banner,
-          text(`### ${name.toUpperCase()}`),
           text(`*${sideText(d, n)}*`),
           text(`*If you'd like to perform this side of the detour, use the command \`!${cap(cmd)}\`.*`),
           text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),

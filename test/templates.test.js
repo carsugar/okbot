@@ -20,7 +20,7 @@ test('create_clue offers every template as a choice and only needs the type', ()
 
 test('task makes one card tag from the tag name and description', () => {
   const [o] = run('task', { tagName: 'leg-3-task', body: 'Find the statue.' });
-  assert.equal(o.tag, 'test-leg-3-task');
+  assert.equal(o.tag, 'leg-3-task');
   assert.equal(images(o)[0], `${ORIGIN}/img/route-info.webp?v=2`);
   assert.match(cardText(o), /Find the statue\./);
 });
@@ -30,21 +30,21 @@ test('pit stop title spells out the leg as an ordinal and names the season', () 
   assert.match(cardText(o), /TWELFTH LEG OF THE AMAZING JRACE: SEASON 4!/);
   assert.match(cardText(o), /Jroe stands beside you at Plaza Mayor/);
   assert.deepEqual(images(o), ['https://x.dev/p.png', `${ORIGIN}/img/pit-stop.webp?v=2`]);
-  assert.equal(o.tag, 'test-pitstop-l12');
+  assert.equal(o.tag, 'pitstop-l12');
   assert.deepEqual(images(run('pitstop', { location: 'Plaza', season: '4' }, { leg: 1 })[0]), [`${ORIGIN}/img/pit-stop.webp?v=2`]);
 });
 
 test('roadblock makes an arrival card and a clue card with the banner and title', () => {
   const [arrival, clue] = run('roadblock', { title: 'Who wants to climb', location: 'Cajón Del Maipo', clue: 'Climb the wall.', image: 'https://x.dev/c.png' });
   assert.equal(arrival.kind, 'card');
-  assert.equal(arrival.tag, 'test-cdm-arrived');
+  assert.equal(arrival.tag, 'cdm-arrived');
   assert.equal(images(arrival)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
   assert.match(cardText(arrival), /Welcome to \*\*[^*]+\*\*!\n### WHO WANTS TO CLIMB/);
   assert.doesNotMatch(cardText(arrival), /ROADBLOCK:/);
   assert.match(cardText(arrival), /Welcome to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(arrival), /`!RB-L3`/);
   assert.equal(clue.kind, 'card');
-  assert.equal(clue.tag, 'test-rb-l3');
+  assert.equal(clue.tag, 'rb-l3');
   assert.equal(images(clue)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
   assert.match(cardText(clue), /^### WHO WANTS TO CLIMB\nClimb the wall\.$/);
 });
@@ -52,7 +52,7 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
   const out = run('detour', { location: 'Cajón Del Maipo', name1: 'Rock', time1: '10 minutes', loc1: 'The Cliff', img1: '', desc1: "where they'll climb it.", name2: 'River', time2: '15 minutes', loc2: 'The Bank', img2: 'https://x.dev/bank.png', desc2: "where they'll raft it.", switchTime: '10 minutes' });
   assert.deepEqual(out.map((o) => o.kind), ['card', 'card', 'card', 'tag']);
-  assert.equal(out[0].tag, 'test-cdm-arrived');
+  assert.equal(out[0].tag, 'cdm-arrived');
   assert.match(cardText(out[0]), /^### ROCK OR RIVER\?/m);
   assert.doesNotMatch(cardText(out[0]), /DETOUR:/);
   assert.match(cardText(out[0]), /ready\.\nIf your team chooses/);
@@ -60,8 +60,8 @@ test('detour makes an arrival card, one card per side, and a plain switch tag', 
   assert.doesNotMatch(cardText(out[0]), /10 minutes/);
   assert.match(cardText(out[0]), /`!Rock` and `!River`/);
   assert.match(cardText(out[0]), /`!Switch-L3-Detour`/);
-  assert.equal(out[1].tag, 'test-rock');
-  assert.equal(cardText(out[1]), "### ROCK\n*In **Rock**, teams will travel 10 minutes to **The Cliff**, where they'll climb it.*\n*If you'd like to perform this side of the detour, use the command `!Rock`.*\n*If you would like to switch, use the command `!Switch-L3-Detour`.*");
+  assert.equal(out[1].tag, 'rock');
+  assert.equal(cardText(out[1]), "*In **Rock**, teams will travel 10 minutes to **The Cliff**, where they'll climb it.*\n*If you'd like to perform this side of the detour, use the command `!Rock`.*\n*If you would like to switch, use the command `!Switch-L3-Detour`.*");
   assert.match(cardText(out[2]), /to \[\*\*The Bank\*\*\]\(https:\/\/x\.dev\/bank\.png\), where they'll raft it\./);
   assert.doesNotMatch(cardText(out[1]), /DETOUR/);
   assert.equal(images(out[1])[0], `${ORIGIN}/img/detour.webp?v=2`);
@@ -81,7 +81,7 @@ test('travel with two transports makes the route card, a travel card and a comma
   assert.deepEqual(out.map((o) => o.kind), ['card', 'card', 'extra', 'extra']);
   assert.match(cardText(out[0]), /Make your way by taxi or bus to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(out[0]), /`!CDM-Travel`/);
-  assert.equal(out[1].tag, 'test-cdm-travel');
+  assert.equal(out[1].tag, 'cdm-travel');
   assert.match(cardText(out[1]), /TAXI/);
   assert.ok(cardText(out[1]).indexOf('TAXI') < cardText(out[1]).indexOf('BUS'), 'most expensive first');
   assert.match(out[2].text, /!CDM-Taxi/);
@@ -107,10 +107,10 @@ test('travel without a destination is just the extra text', () => {
 test('output blocks show the tag text with the link for cards, plain text for tags', () => {
   const [arrival, clue] = run('roadblock', { title: 't', location: 'A B', clue: 'Do it.' });
   const card = outputBlock(arrival, 'https://okbot.example.dev/route/abc');
-  assert.match(card, /tag \+ test-ab-arrived \[.*\]\(https:\/\/okbot\.example\.dev\/route\/abc\?v=\{unix\}\)/);
+  assert.match(card, /tag \+ ab-arrived \[.*\]\(https:\/\/okbot\.example\.dev\/route\/abc\?v=\{unix\}\)/);
   assert.match(card, /Preview: https:\/\/okbot\.example\.dev\/route\/abc/);
-  assert.match(outputBlock(clue, 'https://okbot.example.dev/route/def'), /tag \+ test-rb-l3 \[.*\]\(https:\/\/okbot\.example\.dev\/route\/def\?v=\{unix\}\)/);
-  assert.match(outputBlock({ kind: 'tag', tag: 'test-x', label: 'L', text: 'Do it.' }, ''), /tag \+ test-x Do it\./);
+  assert.match(outputBlock(clue, 'https://okbot.example.dev/route/def'), /tag \+ rb-l3 \[.*\]\(https:\/\/okbot\.example\.dev\/route\/def\?v=\{unix\}\)/);
+  assert.match(outputBlock({ kind: 'tag', tag: 'x', label: 'L', text: 'Do it.' }, ''), /tag \+ x Do it\./);
 });
 
 test('every card from a full draft fits the link-preview limit', () => {
@@ -129,7 +129,7 @@ test('every card from a full draft fits the link-preview limit', () => {
 
 test('a tag name with spaces becomes one hyphenated word', () => {
   const [o] = run('task', { tagName: ' Test  Task ', body: 'Do it' });
-  assert.equal(o.tag, 'test-Test-Task');
+  assert.equal(o.tag, 'Test-Task');
 });
 
 test('the travel info card has the old tag layout: emoji both sides, bold underlined name, italic lines, dearest first', () => {

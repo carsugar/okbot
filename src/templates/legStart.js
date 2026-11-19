@@ -45,21 +45,19 @@ export const legStart = {
   menus: () => [],
   // Three steps: where from and to, the flight and money, then (optional) the flight text.
   steps: (d) => [
-    { label: 'Departure & destination', done: routeDone(d) },
-    { label: 'Airport, money & flight', done: Boolean(d.flightTime) },
-    { label: 'Customize text', done: Boolean(d.flightText), optional: true },
+    { label: 'Departure & destination', detail: 'Leg number, departure, destination, site', done: routeDone(d) },
+    { label: 'Airport, money & flight', detail: 'Airport, money, flight time', done: Boolean(d.flightTime) },
+    {
+      label: 'Customize text',
+      optional: true,
+      done: Boolean(d.flightText),
+      detail: d.flightText
+        ? 'Using your own wording.'
+        : d.flightTime && d.destCity
+          ? `Usual text: ${flightParagraph(draftToLeg(d)).replace(/\s+/g, ' ')}`
+          : 'The usual flight text shows here once steps 1 and 2 are filled in.',
+    },
   ],
-  pending: (d) => {
-    if (!routeDone(d)) return { page: 0, message: 'press **Departure & destination** and enter the leg number, where teams leave from and where they are going.' };
-    if (!d.flightTime) return { page: 1, message: 'press **Airport, money & flight** and enter the flight duration.' };
-    return null;
-  },
-  // What the paragraph about the flight will say, and how to change it.
-  note: (d) => {
-    if (d.flightText) return '**Flight text:** using your own wording.';
-    if (!(d.flightTime && d.destCity)) return '-# The usual flight text shows here once the destination and flight duration are filled in.';
-    return `**Flight text (the usual):**\n> ${flightParagraph(draftToLeg(d)).replace(/\n/g, '\n> ')}`;
-  },
   sections: () => [
     {
       id: 'route',

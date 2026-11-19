@@ -108,17 +108,6 @@ const stepName = (page, i, template, draft) => {
   return own ?? (i === 0 ? 'Details' : (template.extraPageLabel ?? 'More details'));
 };
 
-// The numbered checklist: ✅ done, 👉 the one to do now, ⬜ still to do, ➖ optional. The last
-// item is saving, which is the one to do once everything required is filled in.
-function checklist(steps, canSave) {
-  const now = steps.findIndex((st) => !st.done && !st.optional);
-  const items = [
-    ...steps.map((st, i) => `${st.done ? '✅' : i === now ? '👉' : st.optional ? '➖' : '⬜'} ${st.label}${st.optional && !st.done ? ' (optional)' : ''}`),
-    `${canSave ? '👉' : '⬜'} Save and get the tag to copy`,
-  ];
-  return `**Steps**\n${items.map((item, i) => `${i + 1}. ${item}`).join('\n')}`;
-}
-
 // `status` is a short message above the steps; `saved` is the text of a save (what to copy),
 // shown at the very bottom below everything else.
 export function panelData(draftId, template, draft, origin, status = '', saved = '') {
@@ -134,26 +123,29 @@ export function panelData(draftId, template, draft, origin, status = '', saved =
     : `-# ${template.hint}`;
   const id = (action) => `le:${action}:${draftId}`;
 
-  // "Edit" only once there is something to edit; before that the button says to fill it in.
+  // One row per step: what to do on the left, its button on the right. The blue button is the
+  // one to press now; Save comes last and unlocks once every required step is done.
   const pages = modalPages(template, draft);
-  const fieldsLabel = !draft.touched ? 'Fill in details' : pages.length === 1 ? 'Edit' : 'Edit details';
-  const pageName = (i) => {
-    const own = pages[i].pageLabel;
-    const named = typeof own === 'function' ? own(draft) : own;
-    if (named) return named;
-    return i === 0 ? fieldsLabel : (template.extraPageLabel ?? 'More details');
-  };
-  // With several pop-ups the buttons are numbered like the steps.
-  const editLabel = (i) => (pages.length > 1 ? `${i + 1}. ${pageName(i)}` : pageName(i));
-  // A step the card cannot be saved without, like Travel's times and costs: its button is
-  // highlighted, the message says what to do, and Save waits.
   const pending = template.pending?.(draft) ?? null;
   const steps = template.steps?.(draft) ?? pages.map((page, i) => ({
     label: stepName(page, i, template, draft),
+    detail: page.inputs.map((f) => f[1].replace(/ \(optional\)$/, '')).join(', '),
     done: page.inputs.filter((f) => f[3]).every(([key]) => draft[key]) && (page.inputs.some((f) => f[3]) || Boolean(draft.touched)),
   }));
-  const note = template.note?.(draft) ?? null;
-  const editButtons = pages.map((_, i) => button(pending?.page === i ? 1 : 2, editLabel(i), `${id('edit')}:${i}`));
+  const now = steps.findIndex((st) => !st.done && !st.optional);
+  const canSave = ready && !tooLong && !pending && now < 0;
+  const section = (content, accessory) => ({ type: 9, components: [text(content)], accessory });
+  const stepRows = steps.map((st, i) => {
+    const mark = st.done ? '✅' : i === now ? '👉' : st.optional ? '➖' : '⬜';
+    const detail = st.detail ? `\n-# ${st.detail}` : '';
+    const verb = st.done ? 'Edit' : st.optional ? 'Customize' : 'Fill in';
+    return section(`${mark} **${i + 1}. ${st.label}**${st.optional && !st.done ? ' (optional)' : ''}${detail}`, button(i === now || pending?.page === i ? 1 : 2, verb, `${id('edit')}:${i}`));
+  });
+  const saveRow = section(
+    `${canSave ? '👉' : '⬜'} **${steps.length + 1}. Save**\n-# Gives you the tag to copy and paste yourself.`,
+    button(3, 'Save', id('save'), ...(canSave ? [] : [{ disabled: true }])),
+  );
+  const instruction = canSave ? '**All set.** Press **Save** at the bottom.' : now >= 0 || pending ? '**Go down the list.** Press the blue button.' : '';
   const menuRows = template.menus(draft).map((m) => ({
     type: 1,
     components: [
@@ -175,11 +167,10 @@ export function panelData(draftId, template, draft, origin, status = '', saved =
       ...(cards[0] ? [cards[0].embed.component] : []),
       text(counter),
       ...(status ? [text(status)] : []),
-      text(checklist(steps, ready && !pending)),
-      ...(note ? [text(note)] : []),
-      ...(pending ? [text(`**Next step:** ${pending.message}`)] : []),
+      ...(instruction ? [text(instruction)] : []),
+      ...stepRows,
       ...menuRows,
-      { type: 1, components: [...editButtons, button(3, 'Save and get tag to copy', id('save'), ...(!ready || tooLong || pending ? [{ disabled: true }] : []))] },
+      saveRow,
       ...(saved ? [text(saved)] : []),
     ],
   };
