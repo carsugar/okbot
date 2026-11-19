@@ -20,9 +20,10 @@ export const transportsOf = (d) => {
 function entriesOf(d) {
   return transportsOf(d)
     .map((option) => {
-      const raw = d[`t_${option}`];
-      if (!raw) return null;
-      const [duration, cost = ''] = raw.split('|').map((s) => s.trim());
+      // Times and costs are separate boxes; drafts saved earlier have "time | cost" in one.
+      const [duration, oldCost = ''] = (d[`t_${option}`] ?? '').split('|').map((s) => s.trim());
+      const cost = (d[`c_${option}`] ?? '').trim() || oldCost;
+      if (!duration) return null;
       return { option, duration, cost, costVal: parseFloat(cost.replace(/[^0-9.]/g, '') || '0') };
     })
     .filter(Boolean)
@@ -33,15 +34,21 @@ export const travel = {
   id: 'travel',
   label: 'Route Info: Travel',
   needs: [],
-  // The ways to get there are picked with buttons first, so the editor opens before the pop-up.
-  buttonsFirst: true,
-  hint: 'Pick the ways to get there with the buttons, then press Edit to fill in the details.',
+  // The ways to get there are tick boxes on the first pop-up, after tag name, destination and extra.
+  modalChoice: { key: 'transports', label: 'Ways to get there', options: TRANSPORTS, at: 3 },
+  hint: 'Fill in the tag name to see the card.',
+  extraPageLabel: 'Times and costs',
+  // With a destination and ways to get there, the Travel tag needs each one's time and cost.
+  pending: (d) => {
+    const missing = d.dest ? transportsOf(d).filter((t) => !(d[`t_${t}`] ?? '').split('|')[0].trim()) : [];
+    return missing.length
+      ? { page: 1, message: `press **Times and costs** and enter the time (and cost) for ${humanJoin(missing)}. The Travel tag and its commands need them.` }
+      : null;
+  },
   initial: ({ tag }) => ({ tagName: tag ?? '', dest: '', extra: '', custom: '', transports: [] }),
   draftKey: (d) => (d.tagName ? `travel:${d.tagName}` : null),
   ready: (d) => Boolean(d.tagName),
-  menus: (d) => [
-    { id: 'transports', key: 'transports', buttons: true, options: TRANSPORTS, selected: d.transports ?? [] },
-  ],
+  menus: () => [],
   sections: (d) => [
     {
       id: 'route',
@@ -50,7 +57,7 @@ export const travel = {
         ['tagName', 'Tag name', 50, true],
         ['dest', 'Destination (blank skips welcome text)', 200, false],
         ['extra', 'Extra content (optional)', 1000, false, 'paragraph'],
-        ...((d.transports ?? []).includes('custom') ? [['custom', 'Custom transport name', 50, false]] : []),
+        ['custom', 'Custom transport name (if ticked)', 50, false],
       ],
     },
     ...(transportsOf(d).length
@@ -58,7 +65,11 @@ export const travel = {
           {
             id: 'costs',
             title: 'Times and costs',
-            inputs: transportsOf(d).map((t) => [`t_${t}`, `${cap(t)}: time | cost`, 150, false]),
+            perPage: 4, // two transports at a time, each with its time and cost
+            inputs: transportsOf(d).flatMap((t) => [
+              [`t_${t}`, `${cap(t)}: time, e.g. 40 to 50 minutes`, 100, false],
+              [`c_${t}`, `${cap(t)}: cost, e.g. $20`, 50, false],
+            ]),
           },
         ]
       : []),

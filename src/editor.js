@@ -2,12 +2,13 @@ import { JsonResponse, sendFollowup } from './utils.js';
 import { embedBytes, MAX_EMBED_BYTES } from './routeEmbedPage.js';
 import { routeStore } from './routeStore.js';
 import { TEMPLATES } from './templates/index.js';
+import { tagOf, sameTag } from './clueTags.js';
 import { outputBlock } from './templates/common.js';
-import { applyModal, applyMenu, applyToggle, editModal, panelData, fillBlanks } from './editorPanel.js';
+import { applyModal, applyMenu, editModal, panelData } from './editorPanel.js';
 
-// The template editor: a private panel with a live preview and Edit buttons that
-// open pop-ups with every field. One command opens it for any clue type. The draft lives in the route
-// store until it is saved.
+// The clue editor: a private panel with a live preview and Edit buttons that open pop-ups with
+// every field. /create_clue starts a new clue, /edit_clue reopens a saved one by its tag. The
+// draft lives in the route store until it is saved.
 const EPHEMERAL = 64;
 
 function panel(type, id, template, draft, origin, status = '', extraFlags = 0) {
@@ -16,23 +17,39 @@ function panel(type, id, template, draft, origin, status = '', extraFlags = 0) {
 }
 const privately = (content) => new JsonResponse({ type: 4, data: { content, flags: EPHEMERAL } });
 
-// opts: { leg, tag }, only from the old command options. Normally the pop-up asks for them, and
-// anything saved for them is brought back when the pop-up is first submitted.
+// A new clue. `opts.leg` is the leg number from the command, if given; the pop-up asks otherwise.
 export async function openEditor(interaction, env, origin, type, opts) {
   const template = TEMPLATES[type];
   if (!template) return privately('Unknown clue type.');
-
-  let draft = template.initial(opts);
-  if (opts.tag || opts.leg !== undefined) draft = { ...draft, ...(await savedDraft(routeStore(env), interaction.guild_id, template, draft)) };
-  draft = { ...draft, type, guildId: interaction.guild_id };
+  const draft = { ...template.initial(opts), type, guildId: interaction.guild_id };
   await routeStore(env).saveDraft(interaction.id, draft);
-  // Most types answer the command with the pop-up straight away; the panel follows when it is
-  // submitted. Travel opens the panel first so its buttons can be picked before the details.
-  if (template.buttonsFirst) return panel(4, interaction.id, template, draft, origin, '', EPHEMERAL);
+  // The command answers with the first pop-up straight away; the panel follows when it is submitted.
   return new JsonResponse({ type: 9, data: editModal(interaction.id, template, 0, draft) });
 }
 
-// What was saved for this draft's leg or tag, or from the first version of the editor.
+const savedClues = async (env, guildId) =>
+  (await routeStore(env).listSaved(guildId)).map((draft) => ({ draft, tag: tagOf(draft) })).filter((c) => c.tag);
+
+// /edit_clue: reopen the saved clue whose tag was given.
+export async function editSaved(interaction, env, origin, tag) {
+  const found = (await savedClues(env, interaction.guild_id)).find((c) => sameTag(c.tag, tag ?? ''));
+  if (!found) return privately(`No saved clue has the tag \`${tag}\`. Start typing the tag and pick one from the list.`);
+  const draft = { ...found.draft, type: found.draft.type, guildId: interaction.guild_id, touched: true };
+  await routeStore(env).saveDraft(interaction.id, draft);
+  return panel(4, interaction.id, TEMPLATES[draft.type], draft, origin, '', EPHEMERAL);
+}
+
+// Suggestions while typing the tag for /edit_clue.
+export async function tagSuggestions(interaction, env) {
+  const typed = (interaction.data.options?.find((o) => o.focused)?.value ?? '').toLowerCase();
+  const choices = (await savedClues(env, interaction.guild_id))
+    .filter((c) => c.tag.toLowerCase().includes(typed))
+    .sort((a, b) => a.tag.localeCompare(b.tag))
+    .slice(0, 25)
+    .map((c) => ({ name: `${c.tag} · ${TEMPLATES[c.draft.type].label}`.slice(0, 100), value: c.tag.slice(0, 100) }));
+  return new JsonResponse({ type: 8, data: { choices } });
+}
+
 async function savedDraft(store, guildId, template, draft) {
   const key = template.draftKey(draft);
   if (!key) return null;
@@ -72,19 +89,13 @@ async function save(interaction, env, ctx, origin, id, template, draft) {
 }
 
 export async function handleEditorComponent(interaction, env, ctx, origin) {
-  const [, action, id, part, value] = interaction.data.custom_id.split(':');
+  const [, action, id, part] = interaction.data.custom_id.split(':');
   const store = routeStore(env);
   const draft = await store.getDraft(id);
   if (!draft) return privately('This editor expired. Run the command again.');
   const template = TEMPLATES[draft.type];
 
   if (action === 'edit') return new JsonResponse({ type: 9, data: editModal(id, template, Number(part), draft) });
-
-  if (action === 'toggle') {
-    const next = applyToggle(draft, template, part, value);
-    await store.saveDraft(id, next);
-    return panel(7, id, template, next, origin);
-  }
 
   if (action === 'menu') {
     const next = applyMenu(draft, template, part, interaction.data.values);
@@ -101,25 +112,18 @@ export async function handleEditorModal(interaction, env, origin) {
   const draft = await store.getDraft(id);
   if (!draft) return privately('This editor expired. Run the command again.');
   const template = TEMPLATES[draft.type];
-  const fields = interaction.data.components.flatMap((r) => r.components);
-  let next = applyModal(draft, template, Number(page), (key) => fields.find((c) => c.custom_id === key)?.value);
-  // The first submit is where the leg or tag is typed: bring back anything saved for it, with
-  // what was typed taking priority.
-  const first = !draft.touched;
-  let loaded = false;
-  if (first) {
-    const saved = await savedDraft(store, draft.guildId, template, next);
-    if (saved) {
-      next = { ...fillBlanks(next, saved), type: draft.type, guildId: draft.guildId };
-      loaded = true;
-    }
-  }
+  const fields = interaction.data.components.flatMap((r) => r.components ?? (r.component ? [r.component] : []));
+  let next = applyModal(draft, template, Number(page), (key) => { const c = fields.find((f) => f.custom_id === key); return c?.values ?? c?.value; });
+  // The first submit is where the leg or tag is typed. If something is already saved for it,
+  // say so, since saving would replace it.
+  const key = !draft.touched && template.draftKey(next);
+  const exists = key && (await store.getSaved(`${draft.guildId}:${key}`));
   next = { ...next, touched: true };
   await store.saveDraft(id, next);
   const badLeg = 'leg' in next && next.leg && !/^\d+$/.test(next.leg);
   const status = badLeg
     ? '**The leg number has to be a number**, like 3. Press Edit to fix it.'
-    : loaded ? '-# Loaded what you saved earlier for this one. Anything you typed was kept.' : '';
+    : exists ? '⚠️ **A clue like this is already saved.** Saving will replace it. To change the saved one, use `/edit_clue` with its tag.' : '';
   // The first submit comes from the command, so there is no panel yet: send it as a new private
   // message. Later submits come from the panel's Edit buttons and update it.
   return interaction.message ? panel(7, id, template, next, origin, status) : panel(4, id, template, next, origin, status, EPHEMERAL);

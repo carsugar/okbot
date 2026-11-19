@@ -14,46 +14,78 @@ const INPUTS_PER_MODAL = 5;
 export const fieldPages = (template, draft) =>
   chunk(template.sections(draft).flatMap((s) => s.inputs), INPUTS_PER_MODAL);
 
+// The pop-ups of a template, in order. A template with `modalChoice` (Travel's ways to get
+// there) puts that group of tick boxes on its first pop-up, after the first `at` text fields.
+export const modalPages = (template, draft) => {
+  const choice = template.modalChoice;
+  const pages = [];
+  let flow = [];
+  // Text fields run on from section to section, five to a pop-up (four on the first when it
+  // also has the tick boxes). A section with `perPage` starts fresh pop-ups of that size, so
+  // groups of fields that belong together stay together.
+  const flush = () => {
+    let rest = flow;
+    if (choice && !pages.length) {
+      pages.push({ choice, inputs: rest.slice(0, INPUTS_PER_MODAL - 1) });
+      rest = rest.slice(INPUTS_PER_MODAL - 1);
+    }
+    chunk(rest, INPUTS_PER_MODAL).forEach((inputs) => pages.push({ inputs }));
+    flow = [];
+  };
+  for (const section of template.sections(draft)) {
+    if (!section.perPage) {
+      flow.push(...section.inputs);
+      continue;
+    }
+    flush();
+    chunk(section.inputs, section.perPage).forEach((inputs) => pages.push({ inputs }));
+  }
+  flush();
+  return pages;
+};
+
+const labelled = (label, component) => ({ type: 18, label: label.slice(0, 45), component });
+
+const textInput = (draft, [key, label, max_length, required, style]) =>
+  labelled(label, {
+    type: 4,
+    custom_id: key,
+    style: style === 'paragraph' ? 2 : 1,
+    max_length,
+    required,
+    ...(draft[key] && { value: String(draft[key]).slice(0, max_length) }),
+  });
+
+const choiceBoxes = (draft, choice) =>
+  labelled(choice.label, {
+    type: 22,
+    custom_id: choice.key,
+    required: false,
+    min_values: 0,
+    max_values: choice.options.length,
+    options: choice.options.map((o) => ({ label: o.label, value: o.value, default: (draft[choice.key] ?? []).includes(o.value) })),
+  });
+
 export function editModal(draftId, template, page, draft) {
-  const pages = fieldPages(template, draft);
-  const inputs = pages[page] ?? pages[0];
+  const pages = modalPages(template, draft);
+  const at = pages[page] ? page : 0;
+  const { inputs, choice } = pages[at];
+  const fields = inputs.map((input) => textInput(draft, input));
+  if (choice) fields.splice(choice.at, 0, choiceBoxes(draft, choice));
   return {
-    custom_id: `le_modal:${draftId}:${pages[page] ? page : 0}`,
-    title: `${template.label}${pages.length > 1 ? ` (${page + 1}/${pages.length})` : ''}`.slice(0, 45),
-    components: inputs.map(([key, label, max_length, required, style]) => ({
-      type: 1,
-      components: [
-        {
-          type: 4,
-          custom_id: key,
-          label: label.slice(0, 45),
-          style: style === 'paragraph' ? 2 : 1,
-          max_length,
-          required,
-          ...(draft[key] && { value: String(draft[key]).slice(0, max_length) }),
-        },
-      ],
-    })),
+    custom_id: `le_modal:${draftId}:${at}`,
+    title: `${template.label}${pages.length > 1 ? ` (${at + 1}/${pages.length})` : ''}`.slice(0, 45),
+    components: fields,
   };
 }
 
+// `getField(key)` gives a text field's value, or the list of values ticked in a choice.
 export function applyModal(draft, template, page, getField) {
   const next = { ...draft };
-  for (const [key] of fieldPages(template, draft)[page] ?? []) next[key] = (getField(key) ?? '').trim();
+  const current = modalPages(template, draft)[page];
+  if (current?.choice) next[current.choice.key] = getField(current.choice.key) ?? [];
+  for (const [key] of current?.inputs ?? []) next[key] = (getField(key) ?? '').trim();
   return next;
-}
-
-const isBlank = (v) => v === undefined || v === '' || (Array.isArray(v) && !v.length);
-
-// A draft with every blank field filled in from `saved`; what is already typed wins.
-export const fillBlanks = (draft, saved) =>
-  Object.fromEntries(Object.entries({ ...saved, ...draft }).map(([k, v]) => [k, isBlank(v) ? (saved[k] ?? v) : v]));
-
-// A press on one of a menu's toggle buttons: the value is switched on or off.
-export function applyToggle(draft, template, menuId, value) {
-  const menu = template.menus(draft).find((m) => m.id === menuId);
-  const now = draft[menu.key] ?? [];
-  return { ...draft, [menu.key]: now.includes(value) ? now.filter((v) => v !== value) : [...now, value] };
 }
 
 export function applyMenu(draft, template, menuId, values) {
@@ -74,14 +106,15 @@ export function panelData(draftId, template, draft, origin, status = '') {
     : `-# ${template.hint}`;
   const id = (action) => `le:${action}:${draftId}`;
 
-  const pages = fieldPages(template, draft);
-  const editLabel = (i) => (pages.length === 1 ? 'Edit' : i === 0 ? 'Edit details' : i === 1 ? 'More details' : `More details ${i}`);
-  const editButtons = pages.map((_, i) => button(2, editLabel(i), `${id('edit')}:${i}`));
-  const buttonRow = (m) => ({
-    type: 1,
-    components: m.options.map((o) => button(m.selected.includes(o.value) ? 3 : 2, o.label, `${id('toggle')}:${m.id}:${o.value}`)),
-  });
-  const menuRows = template.menus(draft).map((m) => m.buttons ? buttonRow(m) : ({
+  // "Edit" only once there is something to edit; before that the button says to fill it in.
+  const pages = modalPages(template, draft);
+  const fieldsLabel = !draft.touched ? 'Fill in details' : pages.length === 1 ? 'Edit' : 'Edit details';
+  const editLabel = (i) => (i === 0 ? fieldsLabel : (template.extraPageLabel ?? 'More details'));
+  // A step the card cannot be saved without, like Travel's times and costs: its button is
+  // highlighted, the message says what to do, and Save waits.
+  const pending = ready ? (template.pending?.(draft) ?? null) : null;
+  const editButtons = pages.map((_, i) => button(pending?.page === i ? 1 : 2, editLabel(i), `${id('edit')}:${i}`));
+  const menuRows = template.menus(draft).map((m) => ({
     type: 1,
     components: [
       {
@@ -102,8 +135,9 @@ export function panelData(draftId, template, draft, origin, status = '') {
       ...(cards[0] ? [cards[0].embed.component] : []),
       text(counter),
       ...(status ? [text(status)] : []),
+      ...(pending ? [text(`**Next step:** ${pending.message}`)] : []),
       ...menuRows,
-      { type: 1, components: [...editButtons, button(3, 'Save and get tag to copy', id('save'), ...(!ready || tooLong ? [{ disabled: true }] : []))] },
+      { type: 1, components: [...editButtons, button(3, 'Save and get tag to copy', id('save'), ...(!ready || tooLong || pending ? [{ disabled: true }] : []))] },
     ],
   };
 }

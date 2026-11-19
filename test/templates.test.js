@@ -3,19 +3,19 @@ import assert from 'node:assert/strict';
 import { TEMPLATES, TEMPLATE_CHOICES } from '../src/templates/index.js';
 import { outputBlock } from '../src/templates/common.js';
 import { embedBytes, MAX_EMBED_BYTES } from '../src/routeEmbedPage.js';
-import { TEST_TEMPLATE_COMMAND } from '../src/commands.js';
+import { CREATE_CLUE_COMMAND, EDIT_CLUE_COMMAND } from '../src/commands.js';
 
 const ORIGIN = 'https://okbot.example.dev';
 const cardText = (o) => o.embed.component.components.filter((c) => c.type === 10).map((c) => c.content).join('\n');
 const images = (o) => o.embed.component.components.filter((c) => c.type === 12).map((c) => c.items[0].media.url);
 const run = (id, fields, opts = { leg: 3, tag: 'x' }) => TEMPLATES[id].outputs({ ...TEMPLATES[id].initial(opts), ...fields }, ORIGIN);
 
-test('the command offers every template as a choice and only needs the type', () => {
+test('create_clue offers every template as a choice and only needs the type', () => {
   assert.deepEqual(TEMPLATE_CHOICES.map((c) => c.value), Object.keys(TEMPLATES));
-  const type = TEST_TEMPLATE_COMMAND.options.find((o) => o.name === 'type');
+  const type = CREATE_CLUE_COMMAND.options.find((o) => o.name === 'type');
   assert.equal(type.required, true);
   assert.equal(type.choices.length, 6);
-  assert.ok(TEST_TEMPLATE_COMMAND.options.filter((o) => o.name !== 'type').every((o) => !o.required));
+  assert.ok(CREATE_CLUE_COMMAND.options.filter((o) => o.name !== 'type').every((o) => !o.required));
 });
 
 test('task makes one card tag from the tag name and description', () => {
@@ -66,7 +66,7 @@ test('detour switch tag without a time just points at the other arrival command'
   assert.doesNotMatch(out[3].text, /You will travel/);
 });
 
-const travelDraft = { tagName: 'cdm-arrived', dest: 'Cajón Del Maipo', transports: ['taxi', 'bus'], t_taxi: '40 to 50 minutes | $20', t_bus: '100 to 110 minutes | $5' };
+const travelDraft = { tagName: 'cdm-arrived', dest: 'Cajón Del Maipo', transports: ['taxi', 'bus'], t_taxi: '40 to 50 minutes', c_taxi: '$20', t_bus: '100 to 110 minutes', c_bus: '$5' };
 
 test('travel with two transports makes the route card, a travel card and a command per transport', () => {
   const out = run('travel', travelDraft);
@@ -124,7 +124,7 @@ test('a tag name with spaces becomes one hyphenated word', () => {
 });
 
 test('the travel info card has the old tag layout: emoji both sides, bold underlined name, italic lines, dearest first', () => {
-  const out = run('travel', { tagName: 'cdm', dest: 'Cajón del Maipo', transports: ['bus', 'taxi'], t_taxi: '30 min | $20', t_bus: '1 hour | $5' }, { tag: 'cdm' });
+  const out = run('travel', { tagName: 'cdm', dest: 'Cajón del Maipo', transports: ['bus', 'taxi'], t_taxi: '30 min', c_taxi: '$20', t_bus: '1 hour', c_bus: '$5' }, { tag: 'cdm' });
   const info = out.find((o) => o.label === 'Travel tag');
   const t = cardText(info);
   assert.match(t, /# TRAVEL INFO/);
@@ -132,4 +132,15 @@ test('the travel info card has the old tag layout: emoji both sides, bold underl
   assert.match(t, /\*Duration of Ride: 30 min\*\n\*Cost: \$20\*/);
   assert.match(t, /^\*If you would like to .*\.\*$/m);
   assert.match(cardText(out[0]), /\*Make your way by bus or taxi to \*\*Cajón del Maipo\*\* to receive your next clue\.\*/);
+});
+
+test('edit_clue takes just the tag, with suggestions as you type', () => {
+  assert.deepEqual(EDIT_CLUE_COMMAND.options.map((o) => [o.name, o.required, o.autocomplete]), [['tag', true, true]]);
+});
+
+test('travel still reads a time and cost saved the old way, in one box with a divider', () => {
+  const out = run('travel', { ...travelDraft, t_taxi: '40 minutes | $20', c_taxi: undefined, t_bus: '100 minutes', c_bus: '$5' });
+  const info = cardText(out[1]);
+  assert.match(info, /\*Duration of Ride: 40 minutes\*\n\*Cost: \$20\*/);
+  assert.match(info, /\*Duration of Ride: 100 minutes\*\n\*Cost: \$5\*/);
 });

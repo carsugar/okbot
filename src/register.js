@@ -1,4 +1,4 @@
-import { TAG_TEMPLATE_COMMAND, HELP_COMMAND, MINDMELD_COMMAND, TEST_TEMPLATE_COMMAND, MEMORYPOKER_COMMAND } from './commands.js';
+import { TAG_TEMPLATE_COMMAND, HELP_COMMAND, MINDMELD_COMMAND, CREATE_CLUE_COMMAND, EDIT_CLUE_COMMAND, MEMORYPOKER_COMMAND } from './commands.js';
 
 const token = process.env.OKBOT_TOKEN ?? process.env.DISCORD_TOKEN;
 const applicationId = process.env.OKBOT_APPLICATION_ID ?? process.env.DISCORD_APPLICATION_ID;
@@ -13,7 +13,7 @@ const response = await fetch(`https://discord.com/api/v10/applications/${applica
     Authorization: `Bot ${token}`,
     'Content-Type': 'application/json',
   },
-  body: JSON.stringify([TAG_TEMPLATE_COMMAND, HELP_COMMAND, MINDMELD_COMMAND, TEST_TEMPLATE_COMMAND, MEMORYPOKER_COMMAND]),
+  body: JSON.stringify([TAG_TEMPLATE_COMMAND, HELP_COMMAND, MINDMELD_COMMAND, CREATE_CLUE_COMMAND, EDIT_CLUE_COMMAND, MEMORYPOKER_COMMAND]),
 });
 
 if (response.ok) {

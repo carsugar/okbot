@@ -33,6 +33,11 @@ export class RouteStore extends DurableObject {
     return (await this.ctx.storage.get(`saved:${key}`)) ?? null;
   }
 
+  // Every saved clue draft of one server.
+  async listSaved(guildId) {
+    return [...(await this.ctx.storage.list({ prefix: `saved:${guildId}:` })).values()];
+  }
+
   // Pictures already drawn for Memory Poker, so a repeat request is a read, not a redraw.
   async getImage(key) {
     return (await this.ctx.storage.get(`img:${key}`)) ?? null;

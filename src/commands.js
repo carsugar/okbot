@@ -67,15 +67,25 @@ export const MINDMELD_COMMAND = {
   options: [{ type: 6, name: 'partner', description: 'Who you are playing with', required: true }],
 };
 
-// Staging copies of the template commands, to try new output before it replaces the real ones.
-export const TEST_TEMPLATE_COMMAND = {
-  name: 'test_template',
-  description: 'Build any clue as a card and tags with an editor (staging).',
+// Build a clue as a card and tags with an editor. /create_clue makes a new one, /edit_clue
+// reopens a saved one by its tag.
+export const CREATE_CLUE_COMMAND = {
+  name: 'create_clue',
+  description: 'Create a new clue as a card and tags.',
   default_member_permissions: '32', // MANAGE_GUILD
   contexts: [0],
   options: [
     { type: 3, name: 'type', description: 'Which kind of clue', required: true, choices: TEMPLATE_CHOICES },
+    { type: 4, name: 'leg', description: 'Leg number (for Leg Start, Roadblock, Detour, Pit Stop)', required: false },
   ],
+};
+
+export const EDIT_CLUE_COMMAND = {
+  name: 'edit_clue',
+  description: 'Change a clue you already saved.',
+  default_member_permissions: '32', // MANAGE_GUILD
+  contexts: [0],
+  options: [{ type: 3, name: 'tag', description: 'The clue\'s tag name', required: true, autocomplete: true }],
 };
 
 export const MEMORYPOKER_COMMAND = {

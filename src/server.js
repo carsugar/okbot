@@ -1,6 +1,6 @@
 import { AutoRouter } from 'itty-router';
 import { sampleRouteInfoEmbed, embedPageHtml } from './routeEmbedPage.js';
-import { handleTestTemplateCommand } from './testTemplate.js';
+import { handleCreateClueCommand, handleEditClueCommand, handleClueAutocomplete } from './clueCommands.js';
 import { handleEditorComponent, handleEditorModal } from './editor.js';
 import { routeStore } from './routeStore.js';
 import { legStartEmbed, bannerImage } from './legStartCard.js';
@@ -52,9 +52,15 @@ router.post('/', async (request, env, ctx) => {
 
   if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     if (interaction.data.name === 'mindmeld') return handleMindMeldCommand(interaction, env);
-    if (interaction.data.name === 'test_template') return handleTestTemplateCommand(interaction, env, new URL(request.url).origin);
+    if (interaction.data.name === 'create_clue') return handleCreateClueCommand(interaction, env, new URL(request.url).origin);
+    if (interaction.data.name === 'edit_clue') return handleEditClueCommand(interaction, env, new URL(request.url).origin);
     if (interaction.data.name === 'memorypoker') return handleMemoryPokerCommand(interaction, env, new URL(request.url).origin);
     return handleCommand(interaction);
+  }
+
+  if (interaction.type === InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE) {
+    if (interaction.data.name === 'edit_clue') return handleClueAutocomplete(interaction, env);
+    return new JsonResponse({ type: 8, data: { choices: [] } });
   }
 
   if (interaction.type === InteractionType.MESSAGE_COMPONENT) {
