@@ -126,7 +126,7 @@ test('no departure image means no second gallery', () => {
 });
 
 test('the banner is the Route Info image served by the Worker itself', () => {
-  assert.equal(routeInfoBanner('https://x.dev'), 'https://x.dev/img/route-info.webp');
+  assert.equal(routeInfoBanner('https://x.dev'), 'https://x.dev/img/route-info.webp?v=2');
 });
 
 test('a saved leg turns back into the form values that produced it', () => {

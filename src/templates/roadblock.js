@@ -1,16 +1,17 @@
 import { bannerImage } from '../legStartCard.js';
-import { TEST_PREFIX, card, gallery, text, separator, cardOutput, tagOutput, initialsOf } from './common.js';
+import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, tagOutput, initialsOf } from './common.js';
 
 export const roadblock = {
   id: 'roadblock',
   label: 'Roadblock',
-  needs: ['leg'],
+  needs: [],
   hint: 'Fill in the title, location and clue to see the card.',
-  initial: ({ leg }) => ({ leg: String(leg), title: '', location: '', image: '', clue: '' }),
-  draftKey: (d) => `roadblock:l${d.leg}`,
-  ready: (d) => Boolean(d.title && d.location && d.clue),
+  initial: ({ leg }) => ({ leg: legStartValue(leg), title: '', location: '', image: '', clue: '' }),
+  draftKey: (d) => (hasLeg(d) ? `roadblock:l${d.leg}` : null),
+  ready: (d) => hasLeg(d) && Boolean(d.title && d.location && d.clue),
   menus: () => [],
   sections: () => [
+    { id: 'leg', title: 'Leg', inputs: [legField] },
     {
       id: 'details',
       title: 'Title and location',

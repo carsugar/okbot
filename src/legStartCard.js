@@ -5,7 +5,10 @@
 export const INVISIBLE = '⠀';
 
 // The header images are static files served by the Worker itself, so they never expire.
-export const bannerImage = (origin, banner = 'route-info') => `${origin}/img/${banner}.webp`;
+// Discord keeps its own copy of every image address it has loaded, so bump this whenever the
+// picture files change to make it fetch them again.
+export const BANNER_VERSION = 2;
+export const bannerImage = (origin, banner = 'route-info') => `${origin}/img/${banner}.webp?v=${BANNER_VERSION}`;
 export const routeInfoBanner = (origin) => bannerImage(origin);
 
 // The embed's left bar takes the colour of its header image.
@@ -15,8 +18,9 @@ const BANNER_COLORS = {
 };
 const DEFAULT_ACCENT = 0xf2c230;
 export const accentFor = (parts) => {
-  const url = parts.find((p) => p?.type === 12)?.items?.[0]?.media?.url ?? '';
-  return BANNER_COLORS[/\/img\/([\w-]+)\.webp/.exec(url)?.[1]] ?? DEFAULT_ACCENT;
+  const urls = parts.filter((p) => p?.type === 12).map((p) => p.items?.[0]?.media?.url ?? '');
+  const name = urls.map((u) => /\/img\/([\w-]+)\.webp/.exec(u)?.[1]).find((n) => BANNER_COLORS[n]);
+  return BANNER_COLORS[name] ?? DEFAULT_ACCENT;
 };
 
 const text = (content) => ({ type: 10, content });

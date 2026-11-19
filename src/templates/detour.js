@@ -1,6 +1,6 @@
 import { bannerImage } from '../legStartCard.js';
 import { getInitials } from '../tagTemplates.js';
-import { TEST_PREFIX, card, gallery, text, separator, cardOutput, tagOutput } from './common.js';
+import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, tagOutput } from './common.js';
 
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -8,13 +8,14 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 export const detour = {
   id: 'detour',
   label: 'Detour',
-  needs: ['leg'],
+  needs: [],
   hint: 'Fill in the location and both sides to see the cards.',
-  initial: ({ leg }) => ({ leg: String(leg), location: '', image: '', switchTime: '', name1: '', desc1: '', name2: '', desc2: '' }),
-  draftKey: (d) => `detour:l${d.leg}`,
-  ready: (d) => Boolean(d.location && d.name1 && d.desc1 && d.name2 && d.desc2),
+  initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', name1: '', desc1: '', name2: '', desc2: '' }),
+  draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
+  ready: (d) => hasLeg(d) && Boolean(d.location && d.name1 && d.desc1 && d.name2 && d.desc2),
   menus: () => [],
   sections: () => [
+    { id: 'leg', title: 'Leg', inputs: [legField] },
     {
       id: 'location',
       title: 'Location and switch',

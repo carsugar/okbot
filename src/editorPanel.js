@@ -43,6 +43,19 @@ export function applyModal(draft, template, page, getField) {
   return next;
 }
 
+const isBlank = (v) => v === undefined || v === '' || (Array.isArray(v) && !v.length);
+
+// A draft with every blank field filled in from `saved`; what is already typed wins.
+export const fillBlanks = (draft, saved) =>
+  Object.fromEntries(Object.entries({ ...saved, ...draft }).map(([k, v]) => [k, isBlank(v) ? (saved[k] ?? v) : v]));
+
+// A press on one of a menu's toggle buttons: the value is switched on or off.
+export function applyToggle(draft, template, menuId, value) {
+  const menu = template.menus(draft).find((m) => m.id === menuId);
+  const now = draft[menu.key] ?? [];
+  return { ...draft, [menu.key]: now.includes(value) ? now.filter((v) => v !== value) : [...now, value] };
+}
+
 export function applyMenu(draft, template, menuId, values) {
   const menu = template.menus(draft).find((m) => m.id === menuId);
   return { ...draft, [menu.key]: menu.multi ? values : values[0] };
@@ -64,7 +77,11 @@ export function panelData(draftId, template, draft, origin, status = '') {
   const pages = fieldPages(template, draft);
   const editLabel = (i) => (pages.length === 1 ? 'Edit' : i === 0 ? 'Edit details' : i === 1 ? 'More details' : `More details ${i}`);
   const editButtons = pages.map((_, i) => button(2, editLabel(i), `${id('edit')}:${i}`));
-  const menuRows = template.menus(draft).map((m) => ({
+  const buttonRow = (m) => ({
+    type: 1,
+    components: m.options.map((o) => button(m.selected.includes(o.value) ? 3 : 2, o.label, `${id('toggle')}:${m.id}:${o.value}`)),
+  });
+  const menuRows = template.menus(draft).map((m) => m.buttons ? buttonRow(m) : ({
     type: 1,
     components: [
       {
@@ -86,7 +103,7 @@ export function panelData(draftId, template, draft, origin, status = '') {
       text(counter),
       ...(status ? [text(status)] : []),
       ...menuRows,
-      { type: 1, components: [...editButtons, button(3, 'Save and get tag', id('save'), ...(!ready || tooLong ? [{ disabled: true }] : []))] },
+      { type: 1, components: [...editButtons, button(3, 'Save and get tag to copy', id('save'), ...(!ready || tooLong ? [{ disabled: true }] : []))] },
     ],
   };
 }

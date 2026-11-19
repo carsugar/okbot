@@ -1,5 +1,5 @@
 import { parseLegStart, legStartEmbed, bannerImage, mimuAutoresponder } from '../legStartCard.js';
-import { TEST_PREFIX, cardOutput, extraOutput } from './common.js';
+import { hasLeg, legField, legStartValue, TEST_PREFIX, cardOutput, extraOutput } from './common.js';
 
 const pipe = (...parts) => parts.join(' | ').replace(/( \| )+$/, '');
 
@@ -27,15 +27,16 @@ export const draftToLeg = (d) =>
 export const legStart = {
   id: 'legstart',
   label: 'Route Info: Leg Start',
-  needs: ['leg'],
+  needs: [],
   hint: 'Fill in departure, destination and flight duration to see the card.',
-  initial: ({ leg }) => ({ leg: String(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '' }),
-  draftKey: (d) => `leg-${d.leg}`,
+  initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '' }),
+  draftKey: (d) => (hasLeg(d) ? `leg-${d.leg}` : null),
   // Legs saved by the first version of the editor have no stored draft, only the card data.
   legacy: { key: (d) => `leg-${d.leg}`, toDraft: draftFromSaved },
-  ready: (d) => Boolean(d.depCity && d.destCity && d.flightTime),
+  ready: (d) => hasLeg(d) && Boolean(d.depCity && d.destCity && d.flightTime),
   menus: () => [],
   sections: () => [
+    { id: 'leg', title: 'Leg', inputs: [legField] },
     {
       id: 'departure',
       title: 'Departure',

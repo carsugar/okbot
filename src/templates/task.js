@@ -7,7 +7,7 @@ export const task = {
   needs: [],
   hint: 'Fill in the tag name and the task description to see the card.',
   initial: ({ tag }) => ({ tagName: tag ?? '', body: '' }),
-  draftKey: (d) => `task:${d.tagName}`,
+  draftKey: (d) => (d.tagName ? `task:${d.tagName}` : null),
   ready: (d) => Boolean(d.tagName && d.body),
   menus: () => [],
   sections: () => [
