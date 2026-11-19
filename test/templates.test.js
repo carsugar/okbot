@@ -39,7 +39,8 @@ test('roadblock makes an arrival card and a plain clue tag', () => {
   assert.equal(arrival.kind, 'card');
   assert.equal(arrival.tag, 'test-cdm-arrived');
   assert.equal(images(arrival)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(arrival), /ROADBLOCK: WHO WANTS TO CLIMB/);
+  assert.match(cardText(arrival), /Welcome to \*\*[^*]+\*\*!\n### WHO WANTS TO CLIMB/);
+  assert.doesNotMatch(cardText(arrival), /ROADBLOCK:/);
   assert.match(cardText(arrival), /Welcome to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(arrival), /`!RB-L3`/);
   assert.equal(clue.kind, 'tag');

@@ -17,9 +17,9 @@ export const pitstop = {
       id: 'pitstop',
       title: 'Pit Stop',
       inputs: [
-        ['location', 'Location name', 100, true],
-        ['image', 'Location image URL (optional)', 500, false],
-        ['season', 'Season number', 10, true],
+        ['location', 'Location name', 100, true, undefined, 'e.g. Embalse Yeso'],
+        ['image', 'Location image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
+        ['season', 'Season number', 10, true, undefined, 'e.g. 4'],
       ],
     },
   ],

@@ -180,3 +180,15 @@ test('travel with a destination and transports needs the times and costs: highli
   assert.equal(saveButton(done).disabled, undefined);
   assert.equal(saveButton(panelData(ID, t, { ...base, dest: '' }, ORIGIN)).disabled, undefined);
 });
+
+test('every text box has a hint saying what to write there, short enough for Discord', () => {
+  for (const t of Object.values(TEMPLATES)) {
+    const draft = { ...t.initial({ leg: 1, tag: 'x' }), transports: ['taxi', 'bus', 'custom'], custom: 'tuk tuk' };
+    modalPages(t, draft).forEach((_, i) => {
+      for (const { component: c } of editModal(ID, t, i, draft).components) {
+        if (c.type !== 4) continue;
+        assert.ok(c.placeholder && c.placeholder.length <= 100, `${t.id}/${c.custom_id}`);
+      }
+    });
+  }
+});

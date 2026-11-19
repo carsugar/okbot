@@ -8,7 +8,7 @@ export const TEST_PREFIX = 'test-';
 export const text = (content) => ({ type: 10, content });
 // Leg-based templates ask for the leg number in the pop-up, as its first field.
 export const hasLeg = (d) => /^\d+$/.test(d.leg ?? '');
-export const legField = ['leg', 'Leg number', 3, true];
+export const legField = ['leg', 'Leg number', 3, true, undefined, 'e.g. 10'];
 export const legStartValue = (leg) => (leg === undefined ? '' : String(leg));
 export const separator = () => ({ type: 14, divider: true, spacing: 2 });
 export const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });

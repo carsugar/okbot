@@ -41,25 +41,25 @@ export const legStart = {
       id: 'departure',
       title: 'Departure',
       inputs: [
-        ['depCity', 'Departure city, country', 100, true],
-        ['depImage', 'Image URL (optional)', 500, false],
+        ['depCity', 'Departure city, country', 100, true, undefined, 'e.g. Santiago, Chile'],
+        ['depImage', 'Image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
       ],
     },
     {
       id: 'destination',
       title: 'Destination',
       inputs: [
-        ['destCity', 'Destination city, country', 100, true],
-        ['site', 'Site to reach (optional)', 100, false],
-        ['airport', 'Airport (optional)', 100, false],
+        ['destCity', 'Destination city, country', 100, true, undefined, 'e.g. Beijing, China'],
+        ['site', 'Site to reach (optional)', 100, false, undefined, 'e.g. Temple of Heaven'],
+        ['airport', 'Airport (optional)', 100, false, undefined, 'e.g. PEK Airport'],
       ],
     },
     {
       id: 'moneyflight',
       title: 'Money and flight',
       inputs: [
-        ['money', 'Leg money (optional)', 20, false],
-        ['flightTime', 'Flight duration, e.g. 3 hours', 100, true],
+        ['money', 'Leg money (optional)', 20, false, undefined, 'e.g. $15'],
+        ['flightTime', 'Flight duration', 100, true, undefined, 'e.g. 3 hours'],
       ],
     },
   ],

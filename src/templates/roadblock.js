@@ -16,12 +16,12 @@ export const roadblock = {
       id: 'details',
       title: 'Title and location',
       inputs: [
-        ['title', 'Roadblock title', 100, true],
-        ['location', 'Location name', 100, true],
-        ['image', 'Location image URL (optional)', 500, false],
+        ['title', 'Roadblock title', 100, true, undefined, 'e.g. WHO IS TRYNA CRASH OUT?'],
+        ['location', 'Location name', 100, true, undefined, 'e.g. Cajon de Maipo'],
+        ['image', 'Location image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
       ],
     },
-    { id: 'clue', title: 'Clue', inputs: [['clue', 'Roadblock clue text', 2000, true, 'paragraph']] },
+    { id: 'clue', title: 'Clue', inputs: [['clue', 'Roadblock clue text', 2000, true, 'paragraph', 'Paste the full clue description here...']] },
   ],
   outputs(d, origin) {
     const title = d.title.toUpperCase();
@@ -34,12 +34,12 @@ export const roadblock = {
         label: 'Arrival announcement',
         embed: card([
           gallery(bannerImage(origin, 'roadblock')),
-          text(`### ROADBLOCK: ${title}`),
           text(`Welcome to **${d.location}**!`),
+          text(`### ${title}`),
           d.image ? gallery(d.image) : null,
           separator(),
           text(`If you are competing in this roadblock, use the command \`${clueCmd}\` for further details!`),
-          text('Remember the limit for each partner with the amount of roadblocks each can do!'),
+          text('Remember the limit for the number of roadblocks each partner can do!'),
         ]),
         title: `Roadblock: ${d.title}`,
         description: d.location,

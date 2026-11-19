@@ -15,8 +15,8 @@ export const task = {
       id: 'task',
       title: 'Task',
       inputs: [
-        ['tagName', 'Tag name', 50, true],
-        ['body', 'Task description', 2000, true, 'paragraph'],
+        ['tagName', 'Tag name', 50, true, undefined, 'e.g. dopamine-land'],
+        ['body', 'Task description', 2000, true, 'paragraph', 'Full task instructions...'],
       ],
     },
   ],

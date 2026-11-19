@@ -20,25 +20,25 @@ export const detour = {
       id: 'location',
       title: 'Location and switch',
       inputs: [
-        ['location', 'Location name', 100, true],
-        ['image', 'Location image URL (optional)', 500, false],
-        ['switchTime', 'Switch travel time (optional)', 50, false],
+        ['location', 'Location name', 100, true, undefined, 'e.g. San José'],
+        ['image', 'Location image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
+        ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
       ],
     },
     {
       id: 'side1',
       title: 'Option 1',
       inputs: [
-        ['name1', 'Option 1 name', 50, true],
-        ['desc1', 'Option 1 description', 1500, true, 'paragraph'],
+        ['name1', 'Option 1 name', 50, true, undefined, 'e.g. Mangled'],
+        ['desc1', 'Option 1 description', 1500, true, 'paragraph', 'Describe option 1 task...'],
       ],
     },
     {
       id: 'side2',
       title: 'Option 2',
       inputs: [
-        ['name2', 'Option 2 name', 50, true],
-        ['desc2', 'Option 2 description', 1500, true, 'paragraph'],
+        ['name2', 'Option 2 name', 50, true, undefined, 'e.g. Tangled'],
+        ['desc2', 'Option 2 description', 1500, true, 'paragraph', 'Describe option 2 task...'],
       ],
     },
   ],

@@ -46,13 +46,14 @@ export const modalPages = (template, draft) => {
 
 const labelled = (label, component) => ({ type: 18, label: label.slice(0, 45), component });
 
-const textInput = (draft, [key, label, max_length, required, style]) =>
+const textInput = (draft, [key, label, max_length, required, style, placeholder]) =>
   labelled(label, {
     type: 4,
     custom_id: key,
     style: style === 'paragraph' ? 2 : 1,
     max_length,
     required,
+    ...(placeholder && { placeholder: placeholder.slice(0, 100) }),
     ...(draft[key] && { value: String(draft[key]).slice(0, max_length) }),
   });
 

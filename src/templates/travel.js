@@ -54,10 +54,10 @@ export const travel = {
       id: 'route',
       title: 'Tag and destination',
       inputs: [
-        ['tagName', 'Tag name', 50, true],
-        ['dest', 'Destination (blank skips welcome text)', 200, false],
-        ['extra', 'Extra content (optional)', 1000, false, 'paragraph'],
-        ['custom', 'Custom transport name (if ticked)', 50, false],
+        ['tagName', 'Tag name', 50, true, undefined, 'e.g. cdm-arrived, dopamine-land'],
+        ['dest', 'Destination (blank skips welcome text)', 200, false, undefined, 'e.g. Cajón Del Maipo'],
+        ['extra', 'Extra content (optional)', 1000, false, 'paragraph', 'Additional travel information, warnings, etc...'],
+        ['custom', 'Custom transport name (if ticked)', 50, false, undefined, 'e.g. tuk tuk, railcar'],
       ],
     },
     ...(transportsOf(d).length
@@ -67,8 +67,8 @@ export const travel = {
             title: 'Times and costs',
             perPage: 4, // two transports at a time, each with its time and cost
             inputs: transportsOf(d).flatMap((t) => [
-              [`t_${t}`, `${cap(t)}: time, e.g. 40 to 50 minutes`, 100, false],
-              [`c_${t}`, `${cap(t)}: cost, e.g. $20`, 50, false],
+              [`t_${t}`, `${cap(t)}: time`, 100, false, undefined, 'e.g. 130 to 140 minutes'],
+              [`c_${t}`, `${cap(t)}: cost (blank = free)`, 50, false, undefined, 'e.g. $20'],
             ]),
           },
         ]
