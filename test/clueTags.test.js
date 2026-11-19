@@ -34,3 +34,8 @@ test('a saved clue reads with its leg, kind and what it is about', () => {
   assert.ok(clueLabel({ ...rb, title: 'x'.repeat(200) }).length <= 100);
   assert.equal(clueLabel({ type: 'nope' }), '');
 });
+
+test('a leg start saved before the touchdown fields existed is still found by its tag', () => {
+  const old = { type: 'legstart', leg: '5', depCity: 'A, X', destCity: 'B, Y', flightTime: '2 hours' };
+  assert.equal(tagOf(old), 'leg-5');
+});

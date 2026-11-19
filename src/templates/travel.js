@@ -97,8 +97,8 @@ export const travel = {
     const banner = gallery(bannerImage(origin));
     const transports = transportsOf(d);
     const inits = d.dest ? getInitials(d.dest) : '';
-    const airport = d.airport ? (d.airportImage ? `[${d.airport}](${d.airportImage})` : `**${d.airport}**`) : '';
-    const routeParts = [banner, airport ? text(`*You have officially touched down at ${airport}!*`) : null, d.extra ? text(`*${d.extra}*`) : null];
+    const airport = d.airport ? `**${d.airport}**` : '';
+    const routeParts = [banner, airport ? text(`*You have officially touched down at ${airport}!*`) : null, airport && d.airportImage ? gallery(d.airportImage) : null, d.extra ? text(`*${d.extra}*`) : null];
     if (d.dest) {
       routeParts.push(
         text(`*${transports.length ? `Make your way by ${humanJoin(transports)} to **${d.dest}** to receive your next clue.` : `Make your way to **${d.dest}** to receive your next clue.`}*`),
@@ -130,7 +130,6 @@ export const travel = {
           tag: `${TEST_PREFIX}${inits.toLowerCase()}-travel`,
           label: 'Travel tag',
           embed: card([
-            banner,
             text('# TRAVEL INFO'),
             ...entries.flatMap(({ option, duration, cost }) => {
               const emoji = TRAVEL_EMOJIS[option.toLowerCase()] || '🗺️';
@@ -138,7 +137,7 @@ export const travel = {
               return [text(`## ${emoji}  **__${option.toUpperCase()}__**  ${emoji}\n*${label}: ${duration}*\n*Cost: ${cost || '$0'}*`)];
             }),
             separator(),
-            text(`*${entries.map(({ option }) => `If you would like to ${travelVerb(option)}, use the command \`!${inits}-${travelCmdSuffix(option)}\`.`).join(' ')}*`),
+            text(entries.map(({ option }) => `*If you would like to ${travelVerb(option)}, use the command \`!${inits}-${travelCmdSuffix(option)}\`.*`).join('\n')),
           ]),
           title: 'Travel Info',
           description: d.dest,

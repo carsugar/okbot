@@ -173,7 +173,7 @@ test('travel reads the one-box time and cost into the Travel card, dearest first
   assert.match(t, /\*Duration of Ride: 1 hour, 20 min\*\n\*Cost: \$5\*/);
 });
 
-test('a leg start with ways to get there also makes the touchdown card, linking the airport picture', () => {
+test('a leg start with ways to get there also makes the touchdown card, showing the airport picture', () => {
   const d = {
     leg: '5', depCity: 'A, X', destCity: 'Salzburg, Austria', site: 'Mirabell Gardens', airport: 'Salzburg Airport', flightTime: '2 hours',
     airportImage: 'https://x.com/a.png', transports: ['taxi', 'bus'], t_taxi: '10 min, $5', t_bus: '20 min, $1',
@@ -182,9 +182,12 @@ test('a leg start with ways to get there also makes the touchdown card, linking 
   assert.equal(out[0].key, 'leg-5');
   const card = out.find((o) => o.key === 'touchdown:mg-arrived');
   assert.equal(card.tag, 'mg-arrived');
-  const parts = card.embed.component.components.filter((c) => c.type === 10).map((c) => c.content);
-  assert.equal(parts[0], '*You have officially touched down at [Salzburg Airport](https://x.com/a.png)!*');
+  const all = card.embed.component.components;
+  const parts = all.filter((c) => c.type === 10).map((c) => c.content);
+  assert.equal(parts[0], '*You have officially touched down at **Salzburg Airport**!*');
+  assert.equal(all[2].items[0].media.url, 'https://x.com/a.png');
   assert.match(parts[1], /Make your way by taxi or bus to \*\*Mirabell Gardens\*\*/);
+  assert.ok(!run('legstart', { ...d, airportImage: '' }, { leg: 5 }).find((o) => o.key === 'touchdown:mg-arrived').embed.component.components.some((c, i) => i > 0 && c.type === 12));
   assert.ok(!run('legstart', { ...d, transports: [] }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
   assert.ok(!run('legstart', { ...d, site: '' }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
 });

@@ -4,6 +4,8 @@ import { TEMPLATES } from './templates/index.js';
 export function tagOf(draft) {
   const template = TEMPLATES[draft?.type];
   try {
+    // A saved clue stays listed even if it is missing something added to the template later.
+    if (template?.savedTag) return template.savedTag(draft);
     return template?.ready(draft) ? (template.outputs(draft, '')[0]?.tag ?? null) : null;
   } catch {
     return null;

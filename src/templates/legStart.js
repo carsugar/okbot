@@ -42,6 +42,7 @@ export const legStart = {
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => `${d.depCity} to ${d.destCity}`,
   draftKey: (d) => (hasLeg(d) ? `leg-${d.leg}` : null),
+  savedTag: (d) => (hasLeg(d) ? `${TEST_PREFIX}leg-${d.leg}` : null),
   // Legs saved by the first version of the editor have no stored draft, only the card data.
   legacy: { key: (d) => `leg-${d.leg}`, toDraft: draftFromSaved },
   ready: (d) => hasLeg(d) && Boolean(d.depCity && d.destCity && d.airport && d.flightTime) && siteDone(d),
@@ -89,7 +90,7 @@ export const legStart = {
       pageLabel: 'Airport, money & flight',
       inputs: [
         ['airport', 'Airport name', 100, true, undefined, 'e.g. PEK Airport'],
-        ['airportImage', 'Airport image URL (optional)', 500, false, undefined, 'https://www.imageURL.com', 'The airport name links to this picture on the touchdown card. Leave blank for no link.'],
+        ['airportImage', 'Airport image URL (optional)', 500, false, undefined, 'https://www.imageURL.com', 'Shown under the "touched down" line on the touchdown card. Leave blank for no picture.'],
         ['money', 'Leg money (optional)', 20, false, undefined, 'e.g. $15'],
         ['flightTime', 'Flight duration', 100, true, undefined, 'e.g. 3 hours'],
       ],
