@@ -190,13 +190,13 @@ export const travel = {
 
 // The touchdown clue that goes with a Leg Start: teams have just landed at the airport and
 // make their way to the leg's site. It is the Travel card with a touched-down line first.
-// Nothing is made until the site and at least one way to get there are filled in.
+// The tag is the destination city plus -Touchdown, like New-Delhi-Touchdown. Nothing is made until the site and at least one way to get there are filled in.
 export function touchdownOutputs(d, origin) {
   if (!d.site || !transportsOf(d).length) return [];
   const { tagName, ...rest } = {
     ...d,
     type: 'touchdown',
-    tagName: `${getInitials(d.site).toLowerCase()}-arrived`,
+    tagName: `${(d.destCity ?? '').split(',')[0].trim().replace(/\s+/g, '-') || getInitials(d.site)}-Touchdown`,
     dest: d.site,
   };
   return travel.outputs({ ...rest, tagName }, origin);

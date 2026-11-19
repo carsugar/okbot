@@ -181,14 +181,14 @@ test('a leg start with ways to get there also makes the touchdown card, showing 
   };
   const out = run('legstart', d, { leg: 5 });
   assert.equal(out[0].key, 'leg-5');
-  const card = out.find((o) => o.key === 'touchdown:mg-arrived');
-  assert.equal(card.tag, 'mg-arrived');
+  const card = out.find((o) => o.key === 'touchdown:Salzburg-Touchdown');
+  assert.equal(card.tag, 'Salzburg-Touchdown');
   const all = card.embed.component.components;
   const parts = all.filter((c) => c.type === 10).map((c) => c.content);
   assert.equal(parts[0], '*You have officially touched down at **Salzburg Airport**!*');
   assert.equal(all[2].items[0].media.url, 'https://x.com/a.png');
   assert.match(parts[1], /Make your way by taxi or bus to \*\*Mirabell Gardens\*\*/);
-  assert.ok(!run('legstart', { ...d, airportImage: '' }, { leg: 5 }).find((o) => o.key === 'touchdown:mg-arrived').embed.component.components.some((c, i) => i > 0 && c.type === 12));
+  assert.ok(!run('legstart', { ...d, airportImage: '' }, { leg: 5 }).find((o) => o.key === 'touchdown:Salzburg-Touchdown').embed.component.components.some((c, i) => i > 0 && c.type === 12));
   assert.ok(!run('legstart', { ...d, transports: [] }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
   assert.ok(!run('legstart', { ...d, site: '' }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
 });
@@ -238,4 +238,10 @@ test('the custom emoji can be typed as a :name:, as a server emoji, or pasted; a
   const d = { tagName: 'mg', dest: 'MG', transports: ['taxi', 'custom'], custom: 'tuk tuk', customEmoji: ':auto_rickshaw:', t_taxi: '1 min, $1', 't_tuk tuk': '2 min, $2' };
   const info = run('travel', d).find((o) => o.key === 'travel:mg:info');
   assert.match(info.embed.component.components.map((c) => c.content ?? '').join('\n'), /## 🛺  /);
+});
+
+test('the touchdown tag is the destination city with spaces as hyphens, plus -Touchdown', () => {
+  const d = { leg: '5', depCity: 'A, X', destCity: 'New Delhi, India', site: 'Humayuns Kabir Van', airport: 'DEL', flightTime: '2 hours', transports: ['taxi'], t_taxi: '10 min, $5' };
+  const card = run('legstart', d, { leg: 5 }).find((o) => o.key?.startsWith('touchdown:'));
+  assert.equal(card.tag, 'New-Delhi-Touchdown');
 });
