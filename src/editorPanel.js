@@ -38,7 +38,8 @@ export const modalPages = (template, draft) => {
       continue;
     }
     flush();
-    chunk(section.inputs, section.perPage).forEach((inputs) => pages.push({ inputs, pageLabel: section.pageLabel }));
+    chunk(section.inputs, section.perPage).forEach((inputs, i) =>
+      pages.push({ inputs, pageLabel: section.pageLabel, ...(i === 0 && section.choice && { choice: section.choice }) }));
   }
   flush();
   return pages;

@@ -14,7 +14,7 @@ test('create_clue offers every template as a choice and only needs the type', ()
   assert.deepEqual(TEMPLATE_CHOICES.map((c) => c.value), Object.keys(TEMPLATES));
   const type = CREATE_CLUE_COMMAND.options.find((o) => o.name === 'type');
   assert.equal(type.required, true);
-  assert.equal(type.choices.length, 7);
+  assert.equal(type.choices.length, 6);
   assert.deepEqual(CREATE_CLUE_COMMAND.options.map((o) => o.name), ['type']);
 });
 
@@ -173,13 +173,18 @@ test('travel reads the one-box time and cost into the Travel card, dearest first
   assert.match(t, /\*Duration of Ride: 1 hour, 20 min\*\n\*Cost: \$5\*/);
 });
 
-test('airport touchdown is the travel card with a touched-down line first, linking the airport picture', () => {
-  const d = { type: 'touchdown', tagName: 'mg-arrived', dest: 'Mirabell Gardens', airport: 'Salzburg Airport', airportImage: 'https://x.com/a.png', transports: ['taxi', 'bus'], t_taxi: '10 min, $5', t_bus: '20 min, $1' };
-  const [card] = run('touchdown', d);
-  assert.equal(card.key, 'touchdown:mg-arrived');
+test('a leg start with ways to get there also makes the touchdown card, linking the airport picture', () => {
+  const d = {
+    leg: '5', depCity: 'A, X', destCity: 'Salzburg, Austria', site: 'Mirabell Gardens', airport: 'Salzburg Airport', flightTime: '2 hours',
+    airportImage: 'https://x.com/a.png', transports: ['taxi', 'bus'], t_taxi: '10 min, $5', t_bus: '20 min, $1',
+  };
+  const out = run('legstart', d, { leg: 5 });
+  assert.equal(out[0].key, 'leg-5');
+  const card = out.find((o) => o.key === 'touchdown:mg-arrived');
+  assert.equal(card.tag, 'mg-arrived');
   const parts = card.embed.component.components.filter((c) => c.type === 10).map((c) => c.content);
   assert.equal(parts[0], '*You have officially touched down at [Salzburg Airport](https://x.com/a.png)!*');
   assert.match(parts[1], /Make your way by taxi or bus to \*\*Mirabell Gardens\*\*/);
-  const plain = run('touchdown', { ...d, airportImage: '' })[0].embed.component.components.filter((c) => c.type === 10)[0].content;
-  assert.equal(plain, '*You have officially touched down at **Salzburg Airport**!*');
+  assert.ok(!run('legstart', { ...d, transports: [] }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
+  assert.ok(!run('legstart', { ...d, site: '' }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
 });

@@ -12,6 +12,7 @@ const readyLeg = () => ({
   ...leg.initial({ leg: 3 }),
   depCity: 'Machu Picchu, Peru', depImage: 'https://example.com/dep.png',
   destCity: 'Santiago, Chile', site: 'Cajón del Maipo', airport: 'SCL Airport', money: '$15', flightTime: '3 hours',
+  transports: ['taxi'], t_taxi: '40 min, $20',
 });
 const flat = (panel) => panel.components.flatMap((c) => (c.type === 1 ? c.components : c.type === 9 ? [c.accessory] : [c]));
 const buttons = (panel) => flat(panel).filter((c) => c.type === 2);
@@ -61,8 +62,9 @@ test('every template pops up all its fields, five at a time, inside Discord limi
   }
 });
 
-test('leg start has three pop-ups, detour three, the simple types one', () => {
-  assert.equal(modalPages(leg, readyLeg()).length, 3);
+test('leg start has five pop-ups (four until a way to get there is ticked), detour three, the simple types one', () => {
+  assert.equal(modalPages(leg, readyLeg()).length, 5);
+  assert.equal(modalPages(leg, { ...readyLeg(), transports: [] }).length, 4);
   assert.equal(modalPages(TEMPLATES.pitstop, TEMPLATES.pitstop.initial({ leg: 1 })).length, 1);
 });
 
@@ -82,7 +84,7 @@ test('a ready draft shows the card, the byte count and an enabled Save button', 
 test('a draft missing required fields shows no card, the hint, and a disabled Save', () => {
   const p = panelData(ID, leg, leg.initial({ leg: 3 }), ORIGIN);
   assert.ok(!p.components.some((c) => c.type === 17));
-  assert.match(JSON.stringify(p), /Fill in departure/);
+  assert.match(JSON.stringify(p), /Fill in the steps below/);
   assert.equal(saveButton(p).disabled, true);
 });
 
@@ -165,7 +167,7 @@ test('each step has one button: Fill in until it is done, then Edit, Customize f
   const t = TEMPLATES.pitstop;
   assert.deepEqual(labels(t, t.initial({ leg: 1 })), ['Fill in', 'Save']);
   assert.deepEqual(labels(t, { ...t.initial({ leg: 1 }), location: 'Plaza', touched: true }), ['Edit', 'Save']);
-  assert.deepEqual(labels(leg, readyLeg()), ['Edit', 'Edit', 'Customize', 'Save']);
+  assert.deepEqual(labels(leg, readyLeg()), ['Edit', 'Edit', 'Edit', 'Edit', 'Customize', 'Save']);
 });
 
 test('travel with a destination and transports needs the times and costs: highlighted button, message, Save waits', () => {
@@ -241,31 +243,38 @@ test('no flight text default until the flight and destination are filled in', ()
   assert.equal(box.value, undefined);
 });
 
-test('leg start: three steps, the usual flight text shown up front, and a clear next step', () => {
+test('leg start: departure and destination, airport and flight, then site and ways to get there, times, optional text', () => {
   const blank = { ...leg.initial({ leg: 2 }), touched: true };
   assert.deepEqual(pagesOf(leg, blank).map((p) => p.map((i) => i[0])), [
-    ['leg', 'depCity', 'depImage', 'destCity', 'site'], ['airport', 'money', 'flightTime'], ['flightText'],
+    ['leg', 'depCity', 'depImage', 'destCity'], ['airport', 'airportImage', 'money', 'flightTime'], ['site', 'custom', 'extra'], ['flightText'],
   ]);
   const text = (d) => plain(panelData(ID, leg, d, ORIGIN));
-  assert.match(text(blank), /👉 \*\*1\. Departure & destination\*\*[^]*⬜ \*\*2\. Airport, money & flight\*\*[^]*➖ \*\*3\. Customize text\*\* \(optional\)[^]*⬜ \*\*4\. Save\*\*/);
+  assert.match(text(blank), /👉 \*\*1\. Departure & destination\*\*[^]*⬜ \*\*2\. Airport, money & flight\*\*[^]*⬜ \*\*3\. Site & ways to get there\*\*[^]*➖ \*\*4\. Customize text\*\* \(optional\)[^]*⬜ \*\*5\. Save\*\*/);
   assert.match(text(blank), /usual flight text shows here once/);
 
-  const route = { ...blank, depCity: 'Salzburg, Austria', destCity: 'Vienna, Austria', site: 'Mirabell Gardens' };
-  assert.match(text(route), /👉 \*\*2\. Airport, money & flight/);
+  const dep = { ...blank, depCity: 'Salzburg, Austria', destCity: 'Vienna, Austria' };
+  assert.match(text(dep), /✅ \*\*1\. Departure[^]*👉 \*\*2\. Airport, money & flight/);
 
-  const flight = { ...route, flightTime: '2 hour 35 min' };
-  assert.match(text(flight), /Usual text: All teams will be put onto the same, equalizing \*\*2 hour 35 min flight\*\* to Austria\. Once there, make your way to \*\*Mirabell Gardens\*\*/);
-  assert.match(text(flight), /All set\./);
-  assert.equal(saveButton(panelData(ID, leg, flight, ORIGIN)).disabled, undefined);
+  const flight = { ...dep, airport: 'SZG Airport', flightTime: '2 hour 35 min' };
+  assert.match(text(flight), /👉 \*\*3\. Site/);
 
-  const custom = { ...flight, flightText: 'Teams fly separately.' };
+  const dest = { ...flight, site: 'Mirabell Gardens', transports: ['taxi'] };
+  assert.match(text(dest), /👉 \*\*4\. Times and costs/);
+  assert.match(text(dest), /Usual text: All teams will be put onto the same, equalizing \*\*2 hour 35 min flight\*\* to Austria\. Once there, make your way to \*\*Mirabell Gardens\*\*/);
+  assert.equal(saveButton(panelData(ID, leg, dest, ORIGIN)).disabled, true);
+
+  const done = { ...dest, t_taxi: '10 min, $5' };
+  assert.match(text(done), /All set\.\*\* Press \*\*Save\*\*/);
+  assert.equal(saveButton(panelData(ID, leg, done, ORIGIN)).disabled, undefined);
+
+  const custom = { ...done, flightText: 'Teams fly separately.' };
   assert.match(text(custom), /Using your own wording/);
-  assert.match(text(custom), /✅ \*\*3\. Customize text/);
+  assert.match(text(custom), /✅ \*\*5\. Customize text/);
 });
 
 test('the leg start customize pop-up opens showing the usual text', () => {
   const d = { ...readyLeg(), flightText: '' };
-  const box = editModal(ID, leg, 2, d).components.map((c) => c.component)[0];
+  const box = editModal(ID, leg, 4, d).components.map((c) => c.component)[0];
   assert.equal(box.custom_id, 'flightText');
   assert.match(box.value, /^All teams will be put onto the same, equalizing/);
 });
@@ -301,7 +310,7 @@ test('what a save leaves to copy is the very last thing on the panel, below the 
 
 test('the guidance on changing the flight text is in the Customize text pop-up, not on the panel', () => {
   const d = { ...readyLeg(), flightText: '' };
-  const label = editModal(ID, leg, 2, d).components[0];
+  const label = editModal(ID, leg, 4, d).components[0];
   assert.match(label.description, /Clear the box to go back to the usual text/);
   assert.ok(label.description.length <= 100);
   const panelText = plain(panelData(ID, leg, d, ORIGIN)) + plain(panelData(ID, leg, { ...d, flightText: 'Mine' }, ORIGIN));

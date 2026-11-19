@@ -2,13 +2,13 @@ import { bannerImage } from '../legStartCard.js';
 import { humanJoin, getInitials, travelCmdSuffix, travelVerb, buildIndividualCommand, TRAVEL_EMOJIS, TRAVEL_DURATION_LABELS } from '../tagTemplates.js';
 import { TEST_PREFIX, card, gallery, text, separator, cardOutput, extraOutput } from './common.js';
 
-const TRANSPORTS = [
+export const TRANSPORTS = [
   { value: 'taxi', label: '🚕 Taxi' },
   { value: 'bus', label: '🚌 Bus' },
   { value: 'walking', label: '🚶 Walking' },
   { value: 'custom', label: '✏️ Custom' },
 ];
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // The chosen transports, then the custom one if there is one. Costs are asked for at most five.
 export const transportsOf = (d) => {
@@ -153,44 +153,16 @@ export const travel = {
   },
 };
 
-// Route Info for teams who have just landed: the same as Travel, with a line first saying they
-// touched down at the airport (the name can link to a picture of it).
-export const touchdown = {
-  ...travel,
-  id: 'touchdown',
-  label: 'Route Info: Airport Touchdown',
-  modalChoice: { ...travel.modalChoice, at: 2 },
-  steps: (d) => [
-    { label: 'Details', detail: 'Tag name, destination, ways to get there', done: Boolean(d.tagName) },
-    { label: 'Airport & extra', detail: 'Airport, airport image, extra content', done: Boolean(d.airport) },
-    ...(d.dest && transportsOf(d).length ? [{ label: 'Times and costs', done: !touchdown.pending(d) }] : []),
-  ],
-  pending: (d) => {
-    const missing = d.dest ? transportsOf(d).filter((t) => !parseTimeCost(d[`t_${t}`]).time) : [];
-    return missing.length
-      ? { page: 2, message: `press **Times and costs** and enter the time (and cost) for ${humanJoin(missing)}.` }
-      : null;
-  },
-  initial: (o) => ({ ...travel.initial(o), airport: '', airportImage: '' }),
-  describe: (d) => d.airport || d.dest || d.tagName,
-  draftKey: (d) => (d.tagName ? `touchdown:${d.tagName}` : null),
-  sections: (d) => {
-    const [route, ...rest] = travel.sections(d);
-    const pick = (keys) => route.inputs.filter(([k]) => keys.includes(k));
-    return [
-      { ...route, inputs: pick(['tagName', 'dest', 'custom']) },
-      {
-        id: 'airport',
-        title: 'Airport',
-        perPage: 3,
-        pageLabel: 'Airport & extra',
-        inputs: [
-          ['airport', 'Airport name', 100, false, undefined, 'e.g. Salzburg Airport'],
-          ['airportImage', 'Airport image URL (optional)', 500, false, undefined, 'https://www.imageURL.com', 'The airport name links to this picture. Leave blank for no link.'],
-          ...pick(['extra']),
-        ],
-      },
-      ...rest,
-    ];
-  },
-};
+// The touchdown clue that goes with a Leg Start: teams have just landed at the airport and
+// make their way to the leg's site. It is the Travel card with a touched-down line first.
+// Nothing is made until the site and at least one way to get there are filled in.
+export function touchdownOutputs(d, origin) {
+  if (!d.site || !transportsOf(d).length) return [];
+  const { tagName, ...rest } = {
+    ...d,
+    type: 'touchdown',
+    tagName: `${getInitials(d.site).toLowerCase()}-arrived`,
+    dest: d.site,
+  };
+  return travel.outputs({ ...rest, tagName }, origin);
+}
