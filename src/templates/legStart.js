@@ -25,48 +25,73 @@ export const draftToLeg = (d) =>
     flightText: d.flightText ?? '',
   });
 
+const routeDone = (d) => Boolean(hasLeg(d) && d.depCity && d.destCity);
+
 export const legStart = {
   id: 'legstart',
   label: 'Route Info: Leg Start',
   needs: [],
   hint: 'Fill in departure, destination and flight duration to see the card.',
   initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '', flightText: '' }),
-  // A short description of a saved clue, for the /edit_clue list.
   // Shown in the flight text box until it is changed. Left as it is, the card keeps following
   // the flight duration and destination.
   prefill: (d) => (d.flightTime && d.destCity ? { flightText: flightParagraph(draftToLeg({ ...d, flightText: '' })) } : {}),
+  // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => `${d.depCity} to ${d.destCity}`,
   draftKey: (d) => (hasLeg(d) ? `leg-${d.leg}` : null),
   // Legs saved by the first version of the editor have no stored draft, only the card data.
   legacy: { key: (d) => `leg-${d.leg}`, toDraft: draftFromSaved },
   ready: (d) => hasLeg(d) && Boolean(d.depCity && d.destCity && d.flightTime),
   menus: () => [],
+  // Three steps: where from and to, the flight and money, then (optional) the flight text.
+  steps: (d) => [
+    { label: 'Departure & destination', done: routeDone(d) },
+    { label: 'Airport, money & flight', done: Boolean(d.flightTime) },
+    { label: 'Customize text', done: Boolean(d.flightText), optional: true },
+  ],
+  pending: (d) => {
+    if (!routeDone(d)) return { page: 0, message: 'press **Departure & destination** and enter the leg number, where teams leave from and where they are going.' };
+    if (!d.flightTime) return { page: 1, message: 'press **Airport, money & flight** and enter the flight duration.' };
+    return null;
+  },
+  // What the paragraph about the flight will say, and how to change it.
+  note: (d) => {
+    if (d.flightText) return '**Flight text:** using your own wording.';
+    if (!(d.flightTime && d.destCity)) return '-# The usual flight text shows here once the destination and flight duration are filled in.';
+    return `**Flight text (the usual):**\n> ${flightParagraph(draftToLeg(d)).replace(/\n/g, '\n> ')}`;
+  },
   sections: () => [
-    { id: 'leg', title: 'Leg', inputs: [legField] },
     {
-      id: 'departure',
-      title: 'Departure',
+      id: 'route',
+      title: 'Departure & destination',
+      perPage: 5,
+      pageLabel: 'Departure & destination',
       inputs: [
+        legField,
         ['depCity', 'Departure city, country', 100, true, undefined, 'e.g. Santiago, Chile'],
-        ['depImage', 'Image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
-      ],
-    },
-    {
-      id: 'destination',
-      title: 'Destination',
-      inputs: [
+        ['depImage', 'Departure image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
         ['destCity', 'Destination city, country', 100, true, undefined, 'e.g. Beijing, China'],
         ['site', 'Site to reach (optional)', 100, false, undefined, 'e.g. Temple of Heaven'],
-        ['airport', 'Airport (optional)', 100, false, undefined, 'e.g. PEK Airport'],
       ],
     },
     {
-      id: 'moneyflight',
-      title: 'Money and flight',
+      id: 'flight',
+      title: 'Airport, money & flight',
+      perPage: 3,
+      pageLabel: 'Airport, money & flight',
       inputs: [
+        ['airport', 'Airport (optional)', 100, false, undefined, 'e.g. PEK Airport'],
         ['money', 'Leg money (optional)', 20, false, undefined, 'e.g. $15'],
         ['flightTime', 'Flight duration', 100, true, undefined, 'e.g. 3 hours'],
-        ['flightText', 'Flight and arrival text (edit to change)', 700, false, 'paragraph', 'Filled in once the flight and destination are set. Change it if this leg is different.'],
+      ],
+    },
+    {
+      id: 'text',
+      title: 'Customize text',
+      perPage: 1,
+      pageLabel: 'Customize text',
+      inputs: [
+        ['flightText', 'Flight and arrival text', 700, false, 'paragraph', 'Filled in with the usual text once the flight and destination are set.', 'Change the wording for this leg. Clear the box to go back to the usual text.'],
       ],
     },
   ],

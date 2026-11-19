@@ -44,9 +44,9 @@ export const modalPages = (template, draft) => {
   return pages;
 };
 
-const labelled = (label, component) => ({ type: 18, label: label.slice(0, 45), component });
+const labelled = (label, component, description) => ({ type: 18, label: label.slice(0, 45), ...(description && { description: description.slice(0, 100) }), component });
 
-const textInput = (draft, [key, label, max_length, required, style, placeholder], defaults = {}) => {
+const textInput = (draft, [key, label, max_length, required, style, placeholder, description], defaults = {}) => {
   // A box can show a default until it is changed.
   const value = draft[key] || defaults[key];
   return labelled(label, {
@@ -57,7 +57,7 @@ const textInput = (draft, [key, label, max_length, required, style, placeholder]
     required,
     ...(placeholder && { placeholder: placeholder.slice(0, 100) }),
     ...(value && { value: String(value).slice(0, max_length) }),
-  });
+  }, description);
 };
 
 const choiceBoxes = (draft, choice) =>
@@ -103,7 +103,25 @@ export function applyMenu(draft, template, menuId, values) {
   return { ...draft, [menu.key]: menu.multi ? values : values[0] };
 }
 
-export function panelData(draftId, template, draft, origin, status = '') {
+const stepName = (page, i, template, draft) => {
+  const own = typeof page.pageLabel === 'function' ? page.pageLabel(draft) : page.pageLabel;
+  return own ?? (i === 0 ? 'Details' : (template.extraPageLabel ?? 'More details'));
+};
+
+// The numbered checklist: ✅ done, 👉 the one to do now, ⬜ still to do, ➖ optional. The last
+// item is saving, which is the one to do once everything required is filled in.
+function checklist(steps, canSave) {
+  const now = steps.findIndex((st) => !st.done && !st.optional);
+  const items = [
+    ...steps.map((st, i) => `${st.done ? '✅' : i === now ? '👉' : st.optional ? '➖' : '⬜'} ${st.label}${st.optional && !st.done ? ' (optional)' : ''}`),
+    `${canSave ? '👉' : '⬜'} Save and get the tag to copy`,
+  ];
+  return `**Steps**\n${items.map((item, i) => `${i + 1}. ${item}`).join('\n')}`;
+}
+
+// `status` is a short message above the steps; `saved` is the text of a save (what to copy),
+// shown at the very bottom below everything else.
+export function panelData(draftId, template, draft, origin, status = '', saved = '') {
   const ready = template.ready(draft);
   const outputs = ready ? template.outputs(draft, origin) : [];
   const cards = outputs.filter((o) => o.kind === 'card');
@@ -119,15 +137,22 @@ export function panelData(draftId, template, draft, origin, status = '') {
   // "Edit" only once there is something to edit; before that the button says to fill it in.
   const pages = modalPages(template, draft);
   const fieldsLabel = !draft.touched ? 'Fill in details' : pages.length === 1 ? 'Edit' : 'Edit details';
-  const editLabel = (i) => {
-    if (i === 0) return fieldsLabel;
+  const pageName = (i) => {
     const own = pages[i].pageLabel;
-    return (typeof own === 'function' ? own(draft) : own) ?? template.extraPageLabel ?? 'More details';
+    const named = typeof own === 'function' ? own(draft) : own;
+    if (named) return named;
+    return i === 0 ? fieldsLabel : (template.extraPageLabel ?? 'More details');
   };
+  // With several pop-ups the buttons are numbered like the steps.
+  const editLabel = (i) => (pages.length > 1 ? `${i + 1}. ${pageName(i)}` : pageName(i));
   // A step the card cannot be saved without, like Travel's times and costs: its button is
   // highlighted, the message says what to do, and Save waits.
   const pending = template.pending?.(draft) ?? null;
-  const steps = template.steps?.(draft) ?? [];
+  const steps = template.steps?.(draft) ?? pages.map((page, i) => ({
+    label: stepName(page, i, template, draft),
+    done: page.inputs.filter((f) => f[3]).every(([key]) => draft[key]) && (page.inputs.some((f) => f[3]) || Boolean(draft.touched)),
+  }));
+  const note = template.note?.(draft) ?? null;
   const editButtons = pages.map((_, i) => button(pending?.page === i ? 1 : 2, editLabel(i), `${id('edit')}:${i}`));
   const menuRows = template.menus(draft).map((m) => ({
     type: 1,
@@ -150,10 +175,12 @@ export function panelData(draftId, template, draft, origin, status = '') {
       ...(cards[0] ? [cards[0].embed.component] : []),
       text(counter),
       ...(status ? [text(status)] : []),
-      ...(steps.length ? [text(`-# ${steps.map((st) => `${st.done ? '✅' : '⬜'} ${st.label}`).join(' · ')}`)] : []),
+      text(checklist(steps, ready && !pending)),
+      ...(note ? [text(note)] : []),
       ...(pending ? [text(`**Next step:** ${pending.message}`)] : []),
       ...menuRows,
       { type: 1, components: [...editButtons, button(3, 'Save and get tag to copy', id('save'), ...(!ready || tooLong || pending ? [{ disabled: true }] : []))] },
+      ...(saved ? [text(saved)] : []),
     ],
   };
 }

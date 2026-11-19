@@ -20,8 +20,8 @@ const sideSection = (n) => ({
     [`name${n}`, `Option ${n} name`, 50, true, undefined, 'e.g. Suite'],
     [`time${n}`, `Option ${n} travel time`, 50, true, undefined, 'e.g. 25 minutes'],
     [`loc${n}`, `Option ${n} location name`, 100, true, undefined, 'e.g. Mozartplatz'],
-    [`img${n}`, `Option ${n} location image URL (optional)`, 500, false, undefined, 'https://www.imageURL.com'],
-    [`desc${n}`, `Option ${n}: what happens there`, 1200, true, 'paragraph', "Starts with \"where\", e.g. where they'll honor Mozart. Teams must rehearse and perform..."],
+    [`img${n}`, `Option ${n} location image URL (optional)`, 500, false, undefined, 'https://www.imageURL.com', 'The location name links to this picture. Leave blank for no link.'],
+    [`desc${n}`, `Option ${n}: what happens there`, 1200, true, 'paragraph', "e.g. where they'll honor Mozart. Teams must rehearse and perform one of his pieces.", 'Start with "where". It follows "In [name], teams will travel [time] to [location],"'],
   ],
 });
 

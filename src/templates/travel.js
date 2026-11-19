@@ -16,13 +16,28 @@ export const transportsOf = (d) => {
   return [...picked.filter((t) => t !== 'custom'), ...(picked.includes('custom') && d.custom ? [d.custom] : [])].slice(0, 5);
 };
 
-// Each transport's "duration | cost" answer, most expensive first.
+// What the box for one transport holds: the time, then the cost after a comma, like
+// "40 to 50 minutes, $20". The last part counts as the cost only if it looks like one ($20,
+// 20, free), so a time such as "1 hour, 20 min" stays whole. Boxes saved earlier used "|".
+const COST = /^(free|[$€£¥]?\s?\d+([.,]\d+)?\s?(usd|eur|gbp)?)$/i;
+export function parseTimeCost(raw = '') {
+  if (raw.includes('|')) {
+    const [time, cost = ''] = raw.split('|').map((s) => s.trim());
+    return { time, cost };
+  }
+  const at = raw.lastIndexOf(',');
+  const last = at < 0 ? '' : raw.slice(at + 1).trim();
+  if (at >= 0 && COST.test(last)) return { time: raw.slice(0, at).trim(), cost: last };
+  return { time: raw.trim(), cost: '' };
+}
+
+// Each transport's time and cost, most expensive first. A cost saved in its own box
+// (an earlier version of the editor) wins over one in the same box as the time.
 function entriesOf(d) {
   return transportsOf(d)
     .map((option) => {
-      // Times and costs are separate boxes; drafts saved earlier have "time | cost" in one.
-      const [duration, oldCost = ''] = (d[`t_${option}`] ?? '').split('|').map((s) => s.trim());
-      const cost = (d[`c_${option}`] ?? '').trim() || oldCost;
+      const { time: duration, cost: inline } = parseTimeCost(d[`t_${option}`]);
+      const cost = (d[`c_${option}`] ?? '').trim() || inline;
       if (!duration) return null;
       return { option, duration, cost, costVal: parseFloat(cost.replace(/[^0-9.]/g, '') || '0') };
     })
@@ -44,7 +59,7 @@ export const travel = {
   ],
   // With a destination and ways to get there, the Travel tag needs each one's time and cost.
   pending: (d) => {
-    const missing = d.dest ? transportsOf(d).filter((t) => !(d[`t_${t}`] ?? '').split('|')[0].trim()) : [];
+    const missing = d.dest ? transportsOf(d).filter((t) => !parseTimeCost(d[`t_${t}`]).time) : [];
     return missing.length
       ? { page: 1, message: `press **Times and costs** and enter the time (and cost) for ${humanJoin(missing)}. The Travel tag and its commands need them.` }
       : null;
@@ -71,11 +86,8 @@ export const travel = {
           {
             id: 'costs',
             title: 'Times and costs',
-            perPage: 4, // two transports at a time, each with its time and cost
-            inputs: transportsOf(d).flatMap((t) => [
-              [`t_${t}`, `${cap(t)}: time`, 100, false, undefined, 'e.g. 130 to 140 minutes'],
-              [`c_${t}`, `${cap(t)}: cost (blank = free)`, 50, false, undefined, 'e.g. $20'],
-            ]),
+            // One box per transport, so all of them fit on one pop-up (four at most).
+            inputs: transportsOf(d).map((t) => [`t_${t}`, `${cap(t)}: time, cost`, 150, false, undefined, 'e.g. 40 to 50 minutes, $20']),
           },
         ]
       : []),

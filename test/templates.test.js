@@ -153,3 +153,22 @@ test('travel still reads a time and cost saved the old way, in one box with a di
   assert.match(info, /\*Duration of Ride: 40 minutes\*\n\*Cost: \$20\*/);
   assert.match(info, /\*Duration of Ride: 100 minutes\*\n\*Cost: \$5\*/);
 });
+
+test('a transport box holds the time, then the cost after a comma', async () => {
+  const { parseTimeCost } = await import('../src/templates/travel.js');
+  assert.deepEqual(parseTimeCost('40 to 50 minutes, $20'), { time: '40 to 50 minutes', cost: '$20' });
+  assert.deepEqual(parseTimeCost('1 hour, 20 min'), { time: '1 hour, 20 min', cost: '' });
+  assert.deepEqual(parseTimeCost('1 hour, 20 min, $15'), { time: '1 hour, 20 min', cost: '$15' });
+  assert.deepEqual(parseTimeCost('10 minutes, free'), { time: '10 minutes', cost: 'free' });
+  assert.deepEqual(parseTimeCost('30 minutes'), { time: '30 minutes', cost: '' });
+  assert.deepEqual(parseTimeCost('40 minutes | $7'), { time: '40 minutes', cost: '$7' });
+  assert.deepEqual(parseTimeCost(undefined), { time: '', cost: '' });
+});
+
+test('travel reads the one-box time and cost into the Travel card, dearest first', () => {
+  const out = run('travel', { tagName: 'cdm', dest: 'Cajón del Maipo', transports: ['bus', 'taxi'], t_taxi: '30 min, $20', t_bus: '1 hour, 20 min, $5' }, { tag: 'cdm' });
+  const t = cardText(out.find((o) => o.label === 'Travel tag'));
+  assert.ok(t.indexOf('TAXI') < t.indexOf('BUS'));
+  assert.match(t, /\*Duration of Ride: 30 min\*\n\*Cost: \$20\*/);
+  assert.match(t, /\*Duration of Ride: 1 hour, 20 min\*\n\*Cost: \$5\*/);
+});

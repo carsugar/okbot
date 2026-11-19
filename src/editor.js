@@ -11,8 +11,8 @@ import { applyModal, applyMenu, editModal, panelData } from './editorPanel.js';
 // draft lives in the route store until it is saved.
 const EPHEMERAL = 64;
 
-function panel(type, id, template, draft, origin, status = '', extraFlags = 0) {
-  const data = panelData(id, template, draft, origin, status);
+function panel(type, id, template, draft, origin, status = '', extraFlags = 0, saved = '') {
+  const data = panelData(id, template, draft, origin, status, saved);
   return new JsonResponse({ type, data: { ...data, flags: data.flags | extraFlags } });
 }
 const privately = (content) => new JsonResponse({ type: 4, data: { content, flags: EPHEMERAL } });
@@ -86,7 +86,7 @@ async function save(interaction, env, ctx, origin, id, template, draft) {
     `**You need to copy ${many ? 'each tag below' : 'the tag below'} and paste ${many ? 'them' : 'it'} yourself** ` +
     '(use the copy button on the code box, then paste it in the channel).';
   const more = rest.length ? `\n-# ${rest.length} more tag${rest.length > 1 ? 's' : ''} below. Copy and paste those too.` : '';
-  return panel(7, id, template, draft, origin, `${notice}\n${blocks[0]}${more}`);
+  return panel(7, id, template, draft, origin, '', 0, `${notice}\n${blocks[0]}${more}`);
 }
 
 export async function handleEditorComponent(interaction, env, ctx, origin) {

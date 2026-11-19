@@ -15,6 +15,7 @@ const readyLeg = () => ({
 });
 const flat = (panel) => panel.components.flatMap((c) => (c.type === 1 ? c.components : [c]));
 const buttons = (panel) => flat(panel).filter((c) => c.type === 2);
+const plain = (p) => p.components.filter((c) => c.type === 10).map((c) => c.content).join('\n');
 const pagesOf = (t, d) => modalPages(t, d).map((p) => p.inputs);
 const saveButton = (panel) => buttons(panel).find((b) => b.custom_id.startsWith('le:save:'));
 
@@ -60,8 +61,8 @@ test('every template pops up all its fields, five at a time, inside Discord limi
   }
 });
 
-test('leg start and detour need two pop-ups, the simple types one', () => {
-  assert.equal(modalPages(leg, readyLeg()).length, 2);
+test('leg start has three pop-ups, detour three, the simple types one', () => {
+  assert.equal(modalPages(leg, readyLeg()).length, 3);
   assert.equal(modalPages(TEMPLATES.pitstop, TEMPLATES.pitstop.initial({ leg: 1 })).length, 1);
 });
 
@@ -126,13 +127,14 @@ test('ticking boxes and submitting the first travel pop-up sets the transports',
   assert.equal(next.tagName, 'cdm');
 });
 
-test('the times and costs come on later pop-ups: a time box and a cost box per transport, two transports to a pop-up', () => {
+test('all the times and costs share one pop-up, one box per transport', () => {
   const travel = TEMPLATES.travel;
   assert.equal(modalPages(travel, travel.initial({ tag: 'x' })).length, 1);
-  const three = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus', 'walking'] };
-  assert.deepEqual(pagesOf(travel, three).slice(1).map((p) => p.map((i) => i[0])), [['t_taxi', 'c_taxi', 't_bus', 'c_bus'], ['t_walking', 'c_walking']]);
-  const custom = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'custom'], custom: 'tuk tuk' };
-  assert.deepEqual(pagesOf(travel, custom)[1].map((i) => i[0]), ['t_taxi', 'c_taxi', 't_tuk tuk', 'c_tuk tuk']);
+  const all = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus', 'walking', 'custom'], custom: 'tuk tuk' };
+  assert.equal(modalPages(travel, all).length, 2);
+  assert.deepEqual(pagesOf(travel, all)[1].map((i) => i[0]), ['t_taxi', 't_bus', 't_walking', 't_tuk tuk']);
+  const two = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus'] };
+  assert.deepEqual(pagesOf(travel, two)[1].map((i) => i[0]), ['t_taxi', 't_bus']);
 });
 
 test('leg-based cards ask for the leg number in the pop-up and are not ready without a number', () => {
@@ -163,20 +165,19 @@ test('the first button says Fill in details until something has been entered, th
   const t = TEMPLATES.pitstop;
   assert.deepEqual(labels(t, t.initial({ leg: 1 })), ['Fill in details', 'Save and get tag to copy']);
   assert.deepEqual(labels(t, { ...t.initial({ leg: 1 }), touched: true }), ['Edit', 'Save and get tag to copy']);
-  assert.deepEqual(labels(leg, readyLeg()), ['Fill in details', 'More details', 'Save and get tag to copy']);
-  assert.deepEqual(labels(leg, { ...readyLeg(), touched: true }), ['Edit details', 'More details', 'Save and get tag to copy']);
+  assert.deepEqual(labels(leg, readyLeg()), ['1. Departure & destination', '2. Airport, money & flight', '3. Customize text', 'Save and get tag to copy']);
 });
 
 test('travel with a destination and transports needs the times and costs: highlighted button, message, Save waits', () => {
   const t = TEMPLATES.travel;
   const base = { ...t.initial({ tag: 'cdm' }), dest: 'Plaza', transports: ['taxi', 'bus'], touched: true };
   const p = panelData(ID, t, base, ORIGIN);
-  const costs = buttons(p).find((b) => b.label === 'Times and costs');
+  const costs = buttons(p).find((b) => b.label === '2. Times and costs');
   assert.equal(costs.style, 1);
   assert.match(JSON.stringify(p), /Next step:\*\* press \*\*Times and costs\*\*.*taxi or bus/);
   assert.equal(saveButton(p).disabled, true);
   const done = panelData(ID, t, { ...base, t_taxi: '30 min', c_taxi: '$20', t_bus: '1 hour', c_bus: '$5' }, ORIGIN);
-  assert.equal(buttons(done).find((b) => b.label === 'Times and costs').style, 2);
+  assert.equal(buttons(done).find((b) => b.label === '2. Times and costs').style, 2);
   assert.equal(saveButton(done).disabled, undefined);
   assert.equal(saveButton(panelData(ID, t, { ...base, dest: '' }, ORIGIN)).disabled, undefined);
 });
@@ -202,26 +203,26 @@ test('detour is guided: details, then a pop-up per option with five boxes, a che
     ['name2', 'time2', 'loc2', 'img2', 'desc2'],
   ]);
 
-  const text = (d) => JSON.stringify(panelData(ID, t, d, ORIGIN));
+  const text = (d) => plain(panelData(ID, t, d, ORIGIN));
   const buttonsOf = (d) => buttons(panelData(ID, t, d, ORIGIN));
-  assert.match(text(blank), /⬜ Details · ⬜ Option 1 · ⬜ Option 2/);
-  assert.match(text(blank), /Next step:\*\* press \*\*Fill in details\*\*/);
+  assert.match(text(blank), /1\. 👉 Details\n2\. ⬜ Option 1\n3\. ⬜ Option 2\n4\. ⬜ Save and get the tag to copy/);
+  assert.match(text(blank), /Next step:\*\* press \*\*1\. Fill in details\*\*|Next step:\*\* press \*\*Fill in details\*\*/);
 
   const withLocation = { ...blank, location: 'San José' };
-  assert.match(text(withLocation), /✅ Details · ⬜ Option 1 · ⬜ Option 2/);
+  assert.match(text(withLocation), /1\. ✅ Details\n2\. 👉 Option 1\n3\. ⬜ Option 2/);
   assert.match(text(withLocation), /press \*\*Option 1\*\* and fill in its name, travel time, location and what happens there/);
-  assert.equal(buttonsOf(withLocation).find((b) => b.label === 'Option 1').style, 1);
-  assert.equal(buttonsOf(withLocation).find((b) => b.label === 'Option 2').style, 2);
+  assert.equal(buttonsOf(withLocation).find((b) => b.label === '2. Option 1').style, 1);
+  assert.equal(buttonsOf(withLocation).find((b) => b.label === '3. Option 2').style, 2);
   assert.equal(saveButton(panelData(ID, t, withLocation, ORIGIN)).disabled, true);
 
   const one = { ...withLocation, name1: 'Mangled', time1: '5 minutes', loc1: 'Plaza', desc1: 'where they do it.' };
-  assert.match(text(one), /✅ Details · ✅ Option 1 · ⬜ Option 2/);
+  assert.match(text(one), /1\. ✅ Details\n2\. ✅ Option 1\n3\. 👉 Option 2/);
   assert.match(text(one), /press \*\*Option 2\*\*/);
-  assert.equal(buttonsOf(one).find((b) => b.label === 'Option 2').style, 1);
+  assert.equal(buttonsOf(one).find((b) => b.label === '3. Option 2').style, 1);
 
   const done = { ...one, name2: 'Tangled', time2: '6 minutes', loc2: 'Park', desc2: 'where they do that.' };
   assert.doesNotMatch(text(done), /Next step/);
-  assert.deepEqual(buttonsOf(done).map((b) => b.label), ['Edit details', 'Edit option 1', 'Edit option 2', 'Save and get tag to copy']);
+  assert.deepEqual(buttonsOf(done).map((b) => b.label), ['1. Edit details', '2. Edit option 1', '3. Edit option 2', 'Save and get tag to copy']);
   assert.equal(saveButton(panelData(ID, t, done, ORIGIN)).disabled, undefined);
 });
 
@@ -239,4 +240,82 @@ test('the leg start flight text shows the usual paragraph as a default, and an u
 test('no flight text default until the flight and destination are filled in', () => {
   const box = editModal(ID, leg, pagesOf(leg, leg.initial({})).findIndex((p) => p.some((i) => i[0] === 'flightText')), leg.initial({})).components.map((c) => c.component).find((c) => c.custom_id === 'flightText');
   assert.equal(box.value, undefined);
+});
+
+test('leg start: three steps, the usual flight text shown up front, and a clear next step', () => {
+  const blank = { ...leg.initial({ leg: 2 }), touched: true };
+  assert.deepEqual(pagesOf(leg, blank).map((p) => p.map((i) => i[0])), [
+    ['leg', 'depCity', 'depImage', 'destCity', 'site'], ['airport', 'money', 'flightTime'], ['flightText'],
+  ]);
+  const text = (d) => plain(panelData(ID, leg, d, ORIGIN));
+  assert.match(text(blank), /1\. 👉 Departure & destination\n2\. ⬜ Airport, money & flight\n3\. ➖ Customize text \(optional\)\n4\. ⬜ Save and get the tag to copy/);
+  assert.match(text(blank), /Next step:\*\* press \*\*Departure & destination\*\*/);
+  assert.match(text(blank), /usual flight text shows here once/);
+
+  const route = { ...blank, depCity: 'Salzburg, Austria', destCity: 'Vienna, Austria', site: 'Mirabell Gardens' };
+  assert.match(text(route), /press \*\*Airport, money & flight\*\*/);
+
+  const flight = { ...route, flightTime: '2 hour 35 min' };
+  assert.match(text(flight), /Flight text \(the usual\):\*\*\n> All teams will be put onto the same, equalizing \*\*2 hour 35 min flight\*\* to Austria\. Once there, make your way to \*\*Mirabell Gardens\*\*/);
+  assert.doesNotMatch(text(flight), /Next step/);
+  assert.equal(saveButton(panelData(ID, leg, flight, ORIGIN)).disabled, undefined);
+
+  const custom = { ...flight, flightText: 'Teams fly separately.' };
+  assert.match(text(custom), /using your own wording/);
+  assert.match(text(custom), /3\. ✅ Customize text/);
+});
+
+test('the leg start customize pop-up opens showing the usual text', () => {
+  const d = { ...readyLeg(), flightText: '' };
+  const box = editModal(ID, leg, 2, d).components.map((c) => c.component)[0];
+  assert.equal(box.custom_id, 'flightText');
+  assert.match(box.value, /^All teams will be put onto the same, equalizing/);
+});
+
+test('every clue type shows a numbered checklist ending with saving, and numbered buttons when there are several pop-ups', () => {
+  for (const t of Object.values(TEMPLATES)) {
+    const d = { ...t.initial({ leg: 1, tag: 'x' }), transports: ['taxi'], dest: 'P' };
+    const p = panelData(ID, t, d, ORIGIN);
+    const list = plain(p).split('\n').filter((l) => /^\d+\. /.test(l));
+    assert.ok(list.length >= 2, t.id);
+    assert.match(list.at(-1), /^\d+\. [⬜👉] Save and get the tag to copy$/, t.id);
+    list.forEach((line, i) => assert.ok(line.startsWith(`${i + 1}. `), `${t.id} ${line}`));
+    const edits = buttons(p).filter((b) => b.custom_id.startsWith('le:edit:'));
+    if (edits.length > 1) edits.forEach((b, i) => assert.ok(b.label.startsWith(`${i + 1}. `), `${t.id} ${b.label}`));
+  }
+});
+
+test('a single-pop-up clue lists its fill-in step first and saving last', () => {
+  const t = TEMPLATES.pitstop;
+  const blank = plain(panelData(ID, t, t.initial({ leg: 3 }), ORIGIN));
+  assert.match(blank, /1\. 👉 Details\n2\. ⬜ Save/);
+  const done = plain(panelData(ID, t, { ...t.initial({ leg: 3 }), location: 'Plaza', touched: true }, ORIGIN));
+  assert.match(done, /1\. ✅ Details\n2\. 👉 Save/);
+});
+
+test('what a save leaves to copy is the very last thing on the panel, below the buttons', () => {
+  const t = TEMPLATES.pitstop;
+  const d = { ...t.initial({ leg: 3 }), location: 'Plaza', touched: true };
+  const p = panelData(ID, t, d, ORIGIN, '', '**Saved, but nothing has been posted.** copy the tag');
+  assert.equal(p.components.at(-1).content, '**Saved, but nothing has been posted.** copy the tag');
+  assert.equal(p.components.at(-2).type, 1);
+  assert.ok(!plain(panelData(ID, t, d, ORIGIN)).includes('Saved, but'));
+});
+
+test('the guidance on changing the flight text is in the Customize text pop-up, not on the panel', () => {
+  const d = { ...readyLeg(), flightText: '' };
+  const label = editModal(ID, leg, 2, d).components[0];
+  assert.match(label.description, /Clear the box to go back to the usual text/);
+  assert.ok(label.description.length <= 100);
+  const panelText = plain(panelData(ID, leg, d, ORIGIN)) + plain(panelData(ID, leg, { ...d, flightText: 'Mine' }, ORIGIN));
+  assert.doesNotMatch(panelText, /Press \*\*Customize text|Clear the box|clear the box/);
+});
+
+test('the detour boxes explain how their text is used', () => {
+  const d = TEMPLATES.detour.initial({ leg: 1 });
+  const boxes = editModal(ID, TEMPLATES.detour, 1, d).components;
+  const byKey = Object.fromEntries(boxes.map((b) => [b.component.custom_id, b]));
+  assert.match(byKey.desc1.description, /Start with "where"/);
+  assert.match(byKey.img1.description, /links to this picture/);
+  for (const b of boxes) assert.ok((b.description ?? '').length <= 100);
 });
