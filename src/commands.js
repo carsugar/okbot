@@ -57,7 +57,7 @@ export const TAG_TEMPLATE_COMMAND = {
 
 export const HELP_COMMAND = {
   name: 'help',
-  description: 'How to use the tag template commands.',
+  description: 'How to make and edit clues.',
 };
 
 export const MINDMELD_COMMAND = {

@@ -10,10 +10,20 @@ export const TRANSPORTS = [
 ];
 export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+// The custom transport box holds an emoji and a name, like "🛺 tuk tuk". Without an emoji the
+// map is used.
+const EMOJI_START = /^(\p{Extended_Pictographic}[\p{Extended_Pictographic}\uFE0F\u200D]*)\s*/u;
+export function customParts(raw = '') {
+  const value = raw.trim();
+  const emoji = value.match(EMOJI_START)?.[1] ?? '';
+  return { emoji, name: value.slice(emoji.length).trim() };
+}
+export const CUSTOM_BOX = ['custom', 'Custom transport: emoji, name (if ticked)', 50, false, undefined, 'e.g. 🛺 tuk tuk'];
+
 // The chosen transports, then the custom one if there is one. Costs are asked for at most five.
 export const transportsOf = (d) => {
   const picked = d.transports ?? [];
-  return [...picked.filter((t) => t !== 'custom'), ...(picked.includes('custom') && d.custom ? [d.custom] : [])].slice(0, 5);
+  return [...picked.filter((t) => t !== 'custom'), ...(picked.includes('custom') && customParts(d.custom).name ? [customParts(d.custom).name] : [])].slice(0, 5);
 };
 
 // What the box for one transport holds: the time, then the cost after a comma, like
@@ -78,7 +88,7 @@ export const travel = {
         ['tagName', 'Tag name', 50, true, undefined, 'e.g. cdm-arrived, dopamine-land'],
         ['dest', 'Destination (blank skips welcome text)', 200, false, undefined, 'e.g. Cajón Del Maipo'],
         ['extra', 'Extra content (optional)', 1000, false, 'paragraph', 'Additional travel information, warnings, etc...'],
-        ['custom', 'Custom transport name (if ticked)', 50, false, undefined, 'e.g. tuk tuk, railcar'],
+        CUSTOM_BOX,
       ],
     },
     ...(transportsOf(d).length
@@ -132,7 +142,8 @@ export const travel = {
           embed: card([
             text('# TRAVEL INFO'),
             ...entries.flatMap(({ option, duration, cost }) => {
-              const emoji = TRAVEL_EMOJIS[option.toLowerCase()] || '🗺️';
+              const custom = customParts(d.custom);
+              const emoji = (option === custom.name && custom.emoji) || TRAVEL_EMOJIS[option.toLowerCase()] || '🗺️';
               const label = TRAVEL_DURATION_LABELS[option.toLowerCase()] || 'Duration';
               return [text(`## ${emoji}  **__${option.toUpperCase()}__**  ${emoji}\n*${label}: ${duration}*\n*Cost: ${cost || '$0'}*`)];
             }),

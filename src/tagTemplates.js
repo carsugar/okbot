@@ -533,18 +533,22 @@ function getField(interaction, id) {
 // ── Command handler ───────────────────────────────────────────────────────────
 
 const HELP_TEXT = [
-  "**Steps**",
-  "1. Type `/tag_template` and pick a template (below).",
-  "2. Fill out the form (and click the buttons, if any) that pops up.",
-  "3. Copy each code block I send back and paste it into a channel to create the tag.",
+  "**Making a clue**",
+  "1. Type `/create_clue` and pick the kind of clue.",
+  "2. A private panel opens with a numbered list. Go down it and press the **blue** button each time. Each button opens a pop-up to fill in. The card preview updates as you go.",
+  "3. When the list says all set, press **Save**.",
+  "4. **Copy each code block I send back and paste it into the channel yourself.** I never post or create tags for you.",
   "",
-  "**Templates**",
-  "`routeinfo_legstart leg` — Leg start: tells teams where they're headed, the flight, and the leg money. Also gives the Mimu autoresponder for claiming the money.",
-  "`routeinfo_task` — A Route Info task. Wraps your task text in the Route Info header.",
-  "`routeinfo_travel` — Travel tag for a destination: taxi, bus, walking or custom options, each with time and cost.",
-  "`detour leg` — Detour: the arrival message, one tag per option, and the switch tag (4 tags).",
-  "`roadblock` — Roadblock: the arrival message and the clue tag (2 tags).",
-  "`pitstop leg season` — Pit Stop: the \"you are done with the Nth leg\" message.",
+  "**Changing a clue you saved**",
+  "Type `/edit_clue` and start typing the tag, the leg number or the name. Pick the clue from the list, change what you need, and press **Save** again. Then copy and paste the new tags.",
+  "",
+  "**Kinds of clue**",
+  "**Route Info: Leg Start**: where teams are headed, the flight and the leg money. Also makes the touchdown card, the travel options and the Mimu autoresponder.",
+  "**Route Info: Task**: a Route Info task, with an optional location picture.",
+  "**Route Info: Travel**: how to get to a destination: taxi, bus, walking or custom, each with time and cost.",
+  "**Roadblock**: the arrival message and the clue tag.",
+  "**Detour**: the arrival message, one tag per option, and the switch tag.",
+  "**Pit Stop**: the \"you are done with the Nth leg\" message.",
 ].join("\n");
 
 export function handleCommand(interaction) {

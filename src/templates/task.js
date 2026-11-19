@@ -1,8 +1,5 @@
 import { bannerImage } from '../legStartCard.js';
-import { TEST_PREFIX, card, gallery, text, cardOutput } from './common.js';
-
-// Each line is italic on its own, since italics do not carry across line breaks in Discord.
-const italic = (body) => body.split('\n').map((line) => (line.trim() ? `*${line.trim()}*` : line)).join('\n');
+import { TEST_PREFIX, italic, card, gallery, text, cardOutput } from './common.js';
 
 export const task = {
   id: 'task',

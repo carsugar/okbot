@@ -1,5 +1,5 @@
 import { bannerImage } from '../legStartCard.js';
-import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, initialsOf } from './common.js';
+import { hasLeg, legField, legStartValue, TEST_PREFIX, italic, card, gallery, text, separator, cardOutput, initialsOf } from './common.js';
 
 export const roadblock = {
   id: 'roadblock',
@@ -37,12 +37,12 @@ export const roadblock = {
         embed: card([
           gallery(bannerImage(origin, 'roadblock')),
           text(`# ${title}`),
-          text(`Welcome to **${d.location}**, the site of this leg's roadblock!`),
+          text(italic(`Welcome to **${d.location}**, the site of this leg's roadblock!`)),
           d.image ? gallery(d.image) : null,
           separator(),
-          text(`If you are competing in this roadblock, use the command \`${clueCmd}\` for further details!`),
-          text(`Only the racer who intends to complete this roadblock may use the command \`${clueCmd}\`. The other racer may not use the command, participate in the challenge, or help their partner in any capacity. Breaking these rules will result in severe penalties.`),
-          text('Remember the limit for the number of roadblocks each partner can do!'),
+          text(italic(`If you are competing in this roadblock, use the command \`${clueCmd}\` for further details!`)),
+          text(italic(`Only the racer who intends to complete this roadblock may use the command \`${clueCmd}\`. The other racer may not use the command, participate in the challenge, or help their partner in any capacity. Breaking these rules will result in severe penalties.`)),
+          text(italic('Remember the limit for the number of roadblocks each partner can do!')),
         ]),
         title: `Roadblock: ${d.title}`,
         description: d.location,
@@ -51,7 +51,7 @@ export const roadblock = {
         key: `roadblock:l${d.leg}:clue`,
         tag: `${TEST_PREFIX}rb-l${d.leg}`,
         label: `Roadblock clue (\`${clueCmd}\`)`,
-        embed: card([gallery(bannerImage(origin, 'roadblock')), text(`# ${title}`), text(d.clue)]),
+        embed: card([gallery(bannerImage(origin, 'roadblock')), text(`# ${title}`), text(italic(d.clue))]),
         title: `Roadblock: ${d.title}`,
         description: d.location,
       }),

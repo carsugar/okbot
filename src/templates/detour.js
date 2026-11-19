@@ -1,6 +1,6 @@
 import { bannerImage } from '../legStartCard.js';
 import { getInitials } from '../tagTemplates.js';
-import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, tagOutput } from './common.js';
+import { hasLeg, legField, legStartValue, TEST_PREFIX, italic, card, gallery, text, separator, cardOutput, tagOutput } from './common.js';
 
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -90,9 +90,11 @@ export const detour = {
           banner,
           text(`### ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
           text(
-            `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit **${d.location}** when you are ready.` +
-              `\nIf your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
-              'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
+            italic(
+              `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit **${d.location}** when you are ready.` +
+                `\nIf your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
+                'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
+            ),
           ),
           d.image ? gallery(d.image) : null,
         ]),

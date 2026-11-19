@@ -39,7 +39,7 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
   assert.equal(arrival.kind, 'card');
   assert.equal(arrival.tag, 'cdm-arrived');
   assert.equal(images(arrival)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(arrival), /^# WHO WANTS TO CLIMB\nWelcome to \*\*[^*]+\*\*, the site of this leg.s roadblock!/);
+  assert.match(cardText(arrival), /^# WHO WANTS TO CLIMB\n\*Welcome to \*\*[^*]+\*\*, the site of this leg.s roadblock!\*/);
   assert.doesNotMatch(cardText(arrival), /ROADBLOCK:/);
   assert.match(cardText(arrival), /Welcome to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(arrival), /`!RB-L3`/);
@@ -47,7 +47,7 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
   assert.equal(clue.kind, 'card');
   assert.equal(clue.tag, 'rb-l3');
   assert.equal(images(clue)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(clue), /^# WHO WANTS TO CLIMB\nClimb the wall\.$/);
+  assert.match(cardText(clue), /^# WHO WANTS TO CLIMB\n\*Climb the wall\.\*$/);
 });
 
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
@@ -56,7 +56,7 @@ test('detour makes an arrival card, one card per side, and a plain switch tag', 
   assert.equal(out[0].tag, 'cdm-arrived');
   assert.match(cardText(out[0]), /^### ROCK OR RIVER\?/m);
   assert.doesNotMatch(cardText(out[0]), /DETOUR:/);
-  assert.match(cardText(out[0]), /ready\.\nIf your team chooses/);
+  assert.match(cardText(out[0]), /ready\.\*\n\*If your team chooses/);
   assert.match(cardText(out[0]), /to travel and begin the other side/);
   assert.doesNotMatch(cardText(out[0]), /10 minutes/);
   assert.match(cardText(out[0]), /`!Rock` and `!River`/);
@@ -203,4 +203,21 @@ test('a task card shows its optional image under the text', () => {
 test('task text is italic, each line on its own', () => {
   const [o] = run('task', { tagName: 'x', body: 'First line.\n\nSecond line.' });
   assert.equal(o.embed.component.components[1].content, '*First line.*\n\n*Second line.*');
+});
+
+test('roadblock and detour body text is italic, headings are not', () => {
+  const rb = run('roadblock', { title: 'Climb', location: 'Cajón', clue: 'Climb it.\nTwice.' });
+  const lines = (o) => o.embed.component.components.filter((c) => c.type === 10).flatMap((c) => c.content.split('\n')).filter((l) => l && !l.startsWith('#'));
+  for (const o of rb) for (const l of lines(o)) assert.ok(/^\*.*\*$/.test(l), l);
+});
+
+test('the custom travel option takes an emoji and a name, and the emoji is used on the Travel Info card', () => {
+  const d = { tagName: 'mg', dest: 'Mirabell Gardens', transports: ['taxi', 'custom'], custom: '🛺 tuk tuk', t_taxi: '10 min, $5', t_tuk: '', 't_tuk tuk': '20 min, $2' };
+  const out = run('travel', d);
+  const info = out.find((o) => o.key === 'travel:mg:info');
+  const all = info.embed.component.components.map((c) => c.content ?? '').join('\n');
+  assert.match(all, /## 🛺  \*\*__TUK TUK__\*\*  🛺/);
+  assert.match(out[0].embed.component.components.map((c) => c.content ?? '').join('\n'), /by taxi or tuk tuk/);
+  const plain = run('travel', { ...d, custom: 'tuk tuk' }).find((o) => o.key === 'travel:mg:info');
+  assert.match(plain.embed.component.components.map((c) => c.content ?? '').join('\n'), /## 🗺️  \*\*__TUK TUK__\*\*  🗺️/);
 });

@@ -1,5 +1,5 @@
 import { parseLegStart, legStartEmbed, bannerImage, mimuAutoresponder, flightParagraph } from '../legStartCard.js';
-import { TRANSPORTS, cap, transportsOf, parseTimeCost, touchdownOutputs } from './travel.js';
+import { TRANSPORTS, CUSTOM_BOX, cap, transportsOf, parseTimeCost, touchdownOutputs } from './travel.js';
 import { humanJoin } from '../tagTemplates.js';
 import { hasLeg, legField, legStartValue, TEST_PREFIX, cardOutput, extraOutput } from './common.js';
 
@@ -103,7 +103,7 @@ export const legStart = {
       choice: { key: 'transports', label: 'Ways to get there from the airport', options: TRANSPORTS, at: 1 },
       inputs: [
         ['site', 'Site to reach', 100, true, undefined, 'e.g. Temple of Heaven'],
-        ['custom', 'Custom transport name (if ticked)', 50, false, undefined, 'e.g. tuk tuk, railcar'],
+        CUSTOM_BOX,
         ['extra', 'Extra travel info (optional)', 1000, false, 'paragraph', 'Additional travel information, warnings, etc...'],
       ],
     },

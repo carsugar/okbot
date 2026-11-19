@@ -10,6 +10,8 @@ export const text = (content) => ({ type: 10, content });
 export const hasLeg = (d) => /^\d+$/.test(d.leg ?? '');
 export const legField = ['leg', 'Leg number', 3, true, undefined, 'e.g. 10'];
 export const legStartValue = (leg) => (leg === undefined ? '' : String(leg));
+// Body text is italic. Each line on its own, since italics do not carry across line breaks.
+export const italic = (body) => body.split('\n').map((line) => (line.trim() ? `*${line.trim()}*` : line)).join('\n');
 export const separator = () => ({ type: 14, divider: true, spacing: 2 });
 export const gallery = (url) => ({ type: 12, items: [{ media: { url } }] });
 export const card = (parts) => ({ component: { type: 17, accent_color: accentFor(parts), components: parts.filter(Boolean) } });
