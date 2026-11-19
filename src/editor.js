@@ -125,7 +125,8 @@ export async function handleEditorModal(interaction, env, origin) {
   const status = badLeg
     ? '**The leg number has to be a number**, like 3. Press Edit to fix it.'
     : exists ? '⚠️ **A clue like this is already saved.** Saving will replace it. To change the saved one, use `/edit_clue` with its tag.' : '';
+  const warning = template.warning?.(next) ?? '';
   // The first submit comes from the command, so there is no panel yet: send it as a new private
   // message. Later submits come from the panel's Edit buttons and update it.
-  return interaction.message ? panel(7, id, template, next, origin, status) : panel(4, id, template, next, origin, status, EPHEMERAL);
+  return interaction.message ? panel(7, id, template, next, origin, [status, warning].filter(Boolean).join('\n')) : panel(4, id, template, next, origin, [status, warning].filter(Boolean).join('\n'), EPHEMERAL);
 }

@@ -1,5 +1,6 @@
 import { bannerImage } from '../legStartCard.js';
 import { humanJoin, getInitials, travelCmdSuffix, travelVerb, buildIndividualCommand, TRAVEL_EMOJIS, TRAVEL_DURATION_LABELS } from '../tagTemplates.js';
+import SHORTCODES from '../emojiShortcodes.js';
 import { TEST_PREFIX, card, gallery, text, separator, cardOutput, extraOutput } from './common.js';
 
 export const TRANSPORTS = [
@@ -24,11 +25,25 @@ export const CUSTOM_BOX = ['custom', 'Custom transport name (if ticked)', 50, fa
 export const costInputs = (d) => [
   ...transportsOf(d).map((t) => [`t_${t}`, `${cap(t)}: time, cost`, 150, false, undefined, 'e.g. 40 to 50 minutes, $20']),
   ...(customParts(d.custom).name && (d.transports ?? []).includes('custom')
-    ? [['customEmoji', `Emoji for ${customParts(d.custom).name}`.slice(0, 45), 16, false, undefined, 'e.g. 🛺', 'Paste one emoji, like 🛺 (copy it from your emoji keyboard). Blank gives 🗺️.']]
+    ? [['customEmoji', `Emoji for ${customParts(d.custom).name}`.slice(0, 45), 16, false, undefined, 'e.g. 🛺', 'Paste an emoji, or its name like :auto_rickshaw:. Blank gives 🗺️.']]
     : []),
 ];
 // The emoji for the custom transport: its own box, else one typed before the name.
-export const customEmojiOf = (d) => customParts(d.customEmoji).emoji || customParts(d.custom).emoji;
+// What the emoji box holds as an emoji: the emoji itself, a name like :taxi:, or a server emoji
+// like <:name:123>. Empty if it is none of those.
+export function emojiFrom(raw = '') {
+  const value = raw.trim();
+  const named = value.match(/^:([\w+-]+):$/);
+  if (named) return SHORTCODES[named[1].toLowerCase()] ?? '';
+  if (/^<a?:\w+:\d+>$/.test(value)) return value;
+  return customParts(value).emoji;
+}
+export const customEmojiOf = (d) => emojiFrom(d.customEmoji) || customParts(d.custom).emoji;
+// Said when the emoji box has something that is not an emoji.
+export const emojiWarning = (d) =>
+  d.customEmoji?.trim() && !emojiFrom(d.customEmoji)
+    ? `⚠️ **I don't know the emoji \`${d.customEmoji.trim().slice(0, 30)}\`.** Paste the emoji itself, or its name like \`:taxi:\`. Until then the card uses 🗺️.`
+    : '';
 
 // The chosen transports, then the custom one if there is one. Costs are asked for at most five.
 export const transportsOf = (d) => {
@@ -90,6 +105,7 @@ export const travel = {
   draftKey: (d) => (d.tagName ? `travel:${d.tagName}` : null),
   ready: (d) => Boolean(d.tagName),
   menus: () => [],
+  warning: emojiWarning,
   sections: (d) => [
     {
       id: 'route',

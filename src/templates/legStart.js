@@ -1,5 +1,5 @@
 import { parseLegStart, legStartEmbed, bannerImage, mimuAutoresponder, flightParagraph } from '../legStartCard.js';
-import { TRANSPORTS, CUSTOM_BOX, costInputs, transportsOf, parseTimeCost, touchdownOutputs } from './travel.js';
+import { TRANSPORTS, CUSTOM_BOX, costInputs, emojiWarning, transportsOf, parseTimeCost, touchdownOutputs } from './travel.js';
 import { humanJoin } from '../tagTemplates.js';
 import { hasLeg, legField, legStartValue, TEST_PREFIX, cardOutput, extraOutput } from './common.js';
 
@@ -47,6 +47,7 @@ export const legStart = {
   legacy: { key: (d) => `leg-${d.leg}`, toDraft: draftFromSaved },
   ready: (d) => hasLeg(d) && Boolean(d.depCity && d.destCity && d.airport && d.flightTime) && siteDone(d),
   menus: () => [],
+  warning: emojiWarning,
   // In order: where from and to, the airport and flight, then the site and how to get there from
   // the airport (that also makes the touchdown card), its times and costs, and the optional text.
   steps: (d) => [

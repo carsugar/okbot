@@ -223,3 +223,19 @@ test('the custom travel option has its own emoji box (or an emoji before the nam
   const plain = run('travel', { ...d, customEmoji: '' }).find((o) => o.key === 'travel:mg:info');
   assert.match(plain.embed.component.components.map((c) => c.content ?? '').join('\n'), /## 🗺️  \*\*__TUK TUK__\*\*  🗺️/);
 });
+
+test('the custom emoji can be typed as a :name:, as a server emoji, or pasted; anything else is warned about', async () => {
+  const { emojiFrom, emojiWarning } = await import('../src/templates/travel.js');
+  assert.equal(emojiFrom(':auto_rickshaw:'), '🛺');
+  assert.equal(emojiFrom(' :TAXI: '), '🚕');
+  assert.equal(emojiFrom('🛺'), '🛺');
+  assert.equal(emojiFrom('<:tuk:123456>'), '<:tuk:123456>');
+  assert.equal(emojiFrom(':nope_not_real:'), '');
+  assert.equal(emojiFrom('hello'), '');
+  assert.equal(emojiWarning({ customEmoji: '' }), '');
+  assert.equal(emojiWarning({ customEmoji: ':taxi:' }), '');
+  assert.match(emojiWarning({ customEmoji: ':nope:' }), /don't know the emoji `:nope:`/);
+  const d = { tagName: 'mg', dest: 'MG', transports: ['taxi', 'custom'], custom: 'tuk tuk', customEmoji: ':auto_rickshaw:', t_taxi: '1 min, $1', 't_tuk tuk': '2 min, $2' };
+  const info = run('travel', d).find((o) => o.key === 'travel:mg:info');
+  assert.match(info.embed.component.components.map((c) => c.content ?? '').join('\n'), /## 🛺  /);
+});
