@@ -36,7 +36,7 @@ export const roadblock = {
         label: 'Arrival announcement',
         embed: card([
           gallery(bannerImage(origin, 'roadblock')),
-          text(`## ${title}`),
+          text(`# ${title}`),
           text(`Welcome to **${d.location}**, the site of this leg's roadblock!`),
           d.image ? gallery(d.image) : null,
           separator(),
@@ -51,7 +51,7 @@ export const roadblock = {
         key: `roadblock:l${d.leg}:clue`,
         tag: `${TEST_PREFIX}rb-l${d.leg}`,
         label: `Roadblock clue (\`${clueCmd}\`)`,
-        embed: card([gallery(bannerImage(origin, 'roadblock')), text(`## ${title}`), text(d.clue)]),
+        embed: card([gallery(bannerImage(origin, 'roadblock')), text(`# ${title}`), text(d.clue)]),
         title: `Roadblock: ${d.title}`,
         description: d.location,
       }),

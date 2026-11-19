@@ -39,7 +39,7 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
   assert.equal(arrival.kind, 'card');
   assert.equal(arrival.tag, 'cdm-arrived');
   assert.equal(images(arrival)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(arrival), /^## WHO WANTS TO CLIMB\nWelcome to \*\*[^*]+\*\*, the site of this leg.s roadblock!/);
+  assert.match(cardText(arrival), /^# WHO WANTS TO CLIMB\nWelcome to \*\*[^*]+\*\*, the site of this leg.s roadblock!/);
   assert.doesNotMatch(cardText(arrival), /ROADBLOCK:/);
   assert.match(cardText(arrival), /Welcome to \*\*Cajón Del Maipo\*\*/);
   assert.match(cardText(arrival), /`!RB-L3`/);
@@ -47,7 +47,7 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
   assert.equal(clue.kind, 'card');
   assert.equal(clue.tag, 'rb-l3');
   assert.equal(images(clue)[0], `${ORIGIN}/img/roadblock.webp?v=2`);
-  assert.match(cardText(clue), /^## WHO WANTS TO CLIMB\nClimb the wall\.$/);
+  assert.match(cardText(clue), /^# WHO WANTS TO CLIMB\nClimb the wall\.$/);
 });
 
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
@@ -191,4 +191,16 @@ test('a leg start with ways to get there also makes the touchdown card, showing 
   assert.ok(!run('legstart', { ...d, airportImage: '' }, { leg: 5 }).find((o) => o.key === 'touchdown:mg-arrived').embed.component.components.some((c, i) => i > 0 && c.type === 12));
   assert.ok(!run('legstart', { ...d, transports: [] }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
   assert.ok(!run('legstart', { ...d, site: '' }, { leg: 5 }).some((o) => o.key?.startsWith('touchdown')));
+});
+
+test('a task card shows its optional image under the text', () => {
+  const [plain] = run('task', { tagName: 'x', body: 'Do it.' });
+  assert.ok(!plain.embed.component.components.slice(1).some((c) => c.type === 12));
+  const [pic] = run('task', { tagName: 'x', body: 'Do it.', image: 'https://x.dev/t.png' });
+  assert.equal(pic.embed.component.components.at(-1).items[0].media.url, 'https://x.dev/t.png');
+});
+
+test('task text is italic, each line on its own', () => {
+  const [o] = run('task', { tagName: 'x', body: 'First line.\n\nSecond line.' });
+  assert.equal(o.embed.component.components[1].content, '*First line.*\n\n*Second line.*');
 });
