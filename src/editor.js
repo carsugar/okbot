@@ -4,7 +4,7 @@ import { routeStore } from './routeStore.js';
 import { TEMPLATES } from './templates/index.js';
 import { tagOf, sameTag, clueLabel } from './clueTags.js';
 import { outputBlock } from './templates/common.js';
-import { applyModal, applyMenu, editModal, panelData } from './editorPanel.js';
+import { applyModal, applyMenu, editModal, panelData, copyMessages } from './editorPanel.js';
 
 // The clue editor: a private panel with a live preview and Edit buttons that open pop-ups with
 // every field. /create_clue starts a new clue, /edit_clue reopens a saved one by its tag. The
@@ -75,18 +75,17 @@ async function save(interaction, env, ctx, origin, id, template, draft) {
   }
   await store.saveSaved(`${draft.guildId}:${template.draftKey(draft)}`, draft);
 
-  // The first block goes on the panel, the rest follow as private messages in order.
-  const rest = blocks.slice(1);
-  if (rest.length) {
-    ctx.waitUntil((async () => { for (const block of rest) await sendFollowup(env, interaction.token, block); })());
-  }
+  // The tags to copy come as one new private message (or a few if they are long), after the
+  // panel. The panel itself only says what to do.
+  const messages = copyMessages(blocks);
+  ctx.waitUntil((async () => { for (const message of messages) await sendFollowup(env, interaction.token, message); })());
   const many = blocks.length > 1;
+  const where = messages.length > 1 ? `in the ${messages.length} messages below` : 'in the message below';
   const notice =
     '**Saved, but nothing has been posted.** The bot does not post or create tags for you. ' +
-    `**You need to copy ${many ? 'each tag below' : 'the tag below'} and paste ${many ? 'them' : 'it'} yourself** ` +
-    '(use the copy button on the code box, then paste it in the channel).';
-  const more = rest.length ? `\n-# ${rest.length} more tag${rest.length > 1 ? 's' : ''} below. Copy and paste those too.` : '';
-  return panel(7, id, template, draft, origin, '', 0, `${notice}\n${blocks[0]}${more}`);
+    `**You need to copy ${many ? 'each tag' : 'the tag'} ${where} and paste ${many ? 'them' : 'it'} yourself** ` +
+    '(use the copy button on each code box, then paste it in the channel).';
+  return panel(7, id, template, draft, origin, '', 0, notice);
 }
 
 export async function handleEditorComponent(interaction, env, ctx, origin) {

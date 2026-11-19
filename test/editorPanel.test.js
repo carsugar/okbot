@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyModal, editModal, modalPages, panelData } from '../src/editorPanel.js';
+import { applyModal, editModal, modalPages, panelData, copyMessages } from '../src/editorPanel.js';
 import { TEMPLATES } from '../src/templates/index.js';
 import { parseLegStart } from '../src/legStartCard.js';
 import { draftToLeg } from '../src/templates/legStart.js';
@@ -324,4 +324,15 @@ test('the detour boxes explain how their text is used', () => {
   assert.match(byKey.desc1.description, /Start with "where"/);
   assert.match(byKey.img1.description, /links to this picture/);
   for (const b of boxes) assert.ok((b.description ?? '').length <= 100);
+});
+
+test('the tags to copy go in one message when they fit, and a few when they do not', () => {
+  const one = copyMessages(['**A**\n```\na\n```', '**B**\n```\nb\n```']);
+  assert.equal(one.length, 1);
+  assert.equal(one[0].flags, (1 << 15) | 64);
+  assert.deepEqual(one[0].components.map((c) => c.type), [10, 10]);
+  const long = 'x'.repeat(1500);
+  const several = copyMessages([long, long, long]);
+  assert.deepEqual(several.map((m) => m.components.length), [2, 1]);
+  assert.deepEqual(copyMessages([]), []);
 });

@@ -176,3 +176,20 @@ export function panelData(draftId, template, draft, origin, status = '', saved =
     ],
   };
 }
+
+// The tags to copy after a save, as private messages: every block in one message, or as few as
+// fit. A message of components can hold 4000 characters of text across its text displays.
+const TEXT_LIMIT = 3800;
+export function copyMessages(blocks) {
+  const groups = [];
+  let size = 0;
+  for (const block of blocks) {
+    if (!groups.length || size + block.length > TEXT_LIMIT) {
+      groups.push([]);
+      size = 0;
+    }
+    groups.at(-1).push(block);
+    size += block.length;
+  }
+  return groups.map((group) => ({ flags: IS_COMPONENTS_V2 | 64, components: group.map(text) }));
+}
