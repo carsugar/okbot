@@ -166,3 +166,13 @@ test('the embed bar takes the colour of its header image', async () => {
   assert.equal(accentFor(hdr('detour')), 0xf99e02);
   assert.equal(accentFor([]), 0xf2c230);
 });
+
+test('a custom flight text replaces the usual paragraph, and the usual one is the default', () => {
+  const base = parseLegStart({ ...fields, flightText: '' });
+  const usual = legStartEmbed(base, IMAGE).component.components.map((c) => c.content ?? '').join('\n');
+  assert.match(usual, /All teams will be put onto the same, equalizing/);
+  const custom = parseLegStart({ ...fields, flightText: '  Teams fly on their own this leg.  ' });
+  const text = legStartEmbed(custom, IMAGE).component.components.map((c) => c.content ?? '').join('\n');
+  assert.match(text, /Teams fly on their own this leg\./);
+  assert.doesNotMatch(text, /All teams will be put onto the same/);
+});

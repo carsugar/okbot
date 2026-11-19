@@ -46,16 +46,19 @@ export const modalPages = (template, draft) => {
 
 const labelled = (label, component) => ({ type: 18, label: label.slice(0, 45), component });
 
-const textInput = (draft, [key, label, max_length, required, style, placeholder]) =>
-  labelled(label, {
+const textInput = (draft, [key, label, max_length, required, style, placeholder], defaults = {}) => {
+  // A box can show a default until it is changed.
+  const value = draft[key] || defaults[key];
+  return labelled(label, {
     type: 4,
     custom_id: key,
     style: style === 'paragraph' ? 2 : 1,
     max_length,
     required,
     ...(placeholder && { placeholder: placeholder.slice(0, 100) }),
-    ...(draft[key] && { value: String(draft[key]).slice(0, max_length) }),
+    ...(value && { value: String(value).slice(0, max_length) }),
   });
+};
 
 const choiceBoxes = (draft, choice) =>
   labelled(choice.label, {
@@ -71,7 +74,8 @@ export function editModal(draftId, template, page, draft) {
   const pages = modalPages(template, draft);
   const at = pages[page] ? page : 0;
   const { inputs, choice } = pages[at];
-  const fields = inputs.map((input) => textInput(draft, input));
+  const defaults = template.prefill?.(draft) ?? {};
+  const fields = inputs.map((input) => textInput(draft, input, defaults));
   if (choice) fields.splice(choice.at, 0, choiceBoxes(draft, choice));
   return {
     custom_id: `le_modal:${draftId}:${at}`,
@@ -85,7 +89,12 @@ export function applyModal(draft, template, page, getField) {
   const next = { ...draft };
   const current = modalPages(template, draft)[page];
   if (current?.choice) next[current.choice.key] = getField(current.choice.key) ?? [];
-  for (const [key] of current?.inputs ?? []) next[key] = (getField(key) ?? '').trim();
+  // A box left showing its default is not an override, so it keeps following the other fields.
+  const defaults = template.prefill?.(draft) ?? {};
+  for (const [key] of current?.inputs ?? []) {
+    const value = (getField(key) ?? '').trim();
+    next[key] = value === (defaults[key] ?? null) ? '' : value;
+  }
   return next;
 }
 

@@ -193,30 +193,50 @@ test('every text box has a hint saying what to write there, short enough for Dis
   }
 });
 
-test('detour is guided: details first, then one pop-up per side, with a checklist and a next step', () => {
+test('detour is guided: details, then a pop-up per option with five boxes, a checklist and a next step', () => {
   const t = TEMPLATES.detour;
   const blank = { ...t.initial({ leg: 4 }), touched: true };
-  assert.deepEqual(pagesOf(t, blank).map((p) => p.map((i) => i[0])), [['leg', 'location', 'image', 'switchTime'], ['name1', 'desc1'], ['name2', 'desc2']]);
+  assert.deepEqual(pagesOf(t, blank).map((p) => p.map((i) => i[0])), [
+    ['leg', 'location', 'image', 'switchTime'],
+    ['name1', 'time1', 'loc1', 'img1', 'desc1'],
+    ['name2', 'time2', 'loc2', 'img2', 'desc2'],
+  ]);
 
   const text = (d) => JSON.stringify(panelData(ID, t, d, ORIGIN));
-  const labels = (d) => buttons(panelData(ID, t, d, ORIGIN)).map((b) => b.label);
+  const buttonsOf = (d) => buttons(panelData(ID, t, d, ORIGIN));
   assert.match(text(blank), /⬜ Details · ⬜ Option 1 · ⬜ Option 2/);
   assert.match(text(blank), /Next step:\*\* press \*\*Fill in details\*\*/);
 
   const withLocation = { ...blank, location: 'San José' };
-  assert.match(text(withLocation), /✅ Details · ⬜ Option 1/);
-  assert.match(text(withLocation), /press \*\*Option 1\*\*/);
-  const style = (d, label) => buttons(panelData(ID, t, d, ORIGIN)).find((b) => b.label === label).style;
-  assert.equal(style(withLocation, 'Option 1'), 1);
-  assert.equal(style(withLocation, 'Option 2'), 2);
+  assert.match(text(withLocation), /✅ Details · ⬜ Option 1 · ⬜ Option 2/);
+  assert.match(text(withLocation), /press \*\*Option 1\*\* and fill in its name, travel time, location and what happens there/);
+  assert.equal(buttonsOf(withLocation).find((b) => b.label === 'Option 1').style, 1);
+  assert.equal(buttonsOf(withLocation).find((b) => b.label === 'Option 2').style, 2);
+  assert.equal(saveButton(panelData(ID, t, withLocation, ORIGIN)).disabled, true);
 
-  const one = { ...withLocation, name1: 'Mangled', desc1: 'Do it.' };
+  const one = { ...withLocation, name1: 'Mangled', time1: '5 minutes', loc1: 'Plaza', desc1: 'where they do it.' };
+  assert.match(text(one), /✅ Details · ✅ Option 1 · ⬜ Option 2/);
   assert.match(text(one), /press \*\*Option 2\*\*/);
-  assert.deepEqual(labels(one), ['Edit details', 'Edit option 1', 'Option 2', 'Save and get tag to copy']);
-  assert.equal(saveButton(panelData(ID, t, one, ORIGIN)).disabled, true);
+  assert.equal(buttonsOf(one).find((b) => b.label === 'Option 2').style, 1);
 
-  const done = { ...one, name2: 'Tangled', desc2: 'Do that.' };
+  const done = { ...one, name2: 'Tangled', time2: '6 minutes', loc2: 'Park', desc2: 'where they do that.' };
   assert.doesNotMatch(text(done), /Next step/);
-  assert.match(text(done), /✅ Details · ✅ Option 1 · ✅ Option 2/);
+  assert.deepEqual(buttonsOf(done).map((b) => b.label), ['Edit details', 'Edit option 1', 'Edit option 2', 'Save and get tag to copy']);
   assert.equal(saveButton(panelData(ID, t, done, ORIGIN)).disabled, undefined);
+});
+
+test('the leg start flight text shows the usual paragraph as a default, and an unchanged default is not saved as an override', () => {
+  const d = { ...readyLeg(), flightText: '' };
+  const page = pagesOf(leg, d).findIndex((p) => p.some((i) => i[0] === 'flightText'));
+  const value = () => editModal(ID, leg, page, d).components.map((c) => c.component).find((c) => c.custom_id === 'flightText').value;
+  assert.match(value(), /^All teams will be put onto the same, equalizing \*\*.+\*\* to .+\./);
+  const unchanged = applyModal(d, leg, page, (k) => (k === 'flightText' ? value() : d[k]));
+  assert.equal(unchanged.flightText, '');
+  const changed = applyModal(d, leg, page, (k) => (k === 'flightText' ? 'Teams fly separately this leg.' : d[k]));
+  assert.equal(changed.flightText, 'Teams fly separately this leg.');
+});
+
+test('no flight text default until the flight and destination are filled in', () => {
+  const box = editModal(ID, leg, pagesOf(leg, leg.initial({})).findIndex((p) => p.some((i) => i[0] === 'flightText')), leg.initial({})).components.map((c) => c.component).find((c) => c.custom_id === 'flightText');
+  assert.equal(box.value, undefined);
 });

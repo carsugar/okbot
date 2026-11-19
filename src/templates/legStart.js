@@ -1,4 +1,4 @@
-import { parseLegStart, legStartEmbed, bannerImage, mimuAutoresponder } from '../legStartCard.js';
+import { parseLegStart, legStartEmbed, bannerImage, mimuAutoresponder, flightParagraph } from '../legStartCard.js';
 import { hasLeg, legField, legStartValue, TEST_PREFIX, cardOutput, extraOutput } from './common.js';
 
 const pipe = (...parts) => parts.join(' | ').replace(/( \| )+$/, '');
@@ -22,6 +22,7 @@ export const draftToLeg = (d) =>
     destination: pipe(d.destCity, d.site, d.airport),
     money: d.money,
     flightTime: d.flightTime,
+    flightText: d.flightText ?? '',
   });
 
 export const legStart = {
@@ -29,8 +30,11 @@ export const legStart = {
   label: 'Route Info: Leg Start',
   needs: [],
   hint: 'Fill in departure, destination and flight duration to see the card.',
-  initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '' }),
+  initial: ({ leg }) => ({ leg: legStartValue(leg), depCity: '', depImage: '', destCity: '', site: '', airport: '', money: '', flightTime: '', flightText: '' }),
   // A short description of a saved clue, for the /edit_clue list.
+  // Shown in the flight text box until it is changed. Left as it is, the card keeps following
+  // the flight duration and destination.
+  prefill: (d) => (d.flightTime && d.destCity ? { flightText: flightParagraph(draftToLeg({ ...d, flightText: '' })) } : {}),
   describe: (d) => `${d.depCity} to ${d.destCity}`,
   draftKey: (d) => (hasLeg(d) ? `leg-${d.leg}` : null),
   // Legs saved by the first version of the editor have no stored draft, only the card data.
@@ -62,6 +66,7 @@ export const legStart = {
       inputs: [
         ['money', 'Leg money (optional)', 20, false, undefined, 'e.g. $15'],
         ['flightTime', 'Flight duration', 100, true, undefined, 'e.g. 3 hours'],
+        ['flightText', 'Flight and arrival text (edit to change)', 700, false, 'paragraph', 'Filled in once the flight and destination are set. Change it if this leg is different.'],
       ],
     },
   ],

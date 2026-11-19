@@ -5,6 +5,32 @@ import { hasLeg, legField, legStartValue, TEST_PREFIX, card, gallery, text, sepa
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+// One side of the detour: its name, how long to get there, where it is (and a picture of it),
+// and what happens there. The card text is built from them, so every side reads the same way.
+const SIDE_KEYS = (n) => [`name${n}`, `time${n}`, `loc${n}`, `img${n}`, `desc${n}`];
+const blankSide = (n) => Object.fromEntries(SIDE_KEYS(n).map((k) => [k, '']));
+const sideDone = (d, n) => Boolean(d[`name${n}`] && d[`time${n}`] && d[`loc${n}`] && d[`desc${n}`]);
+
+const sideSection = (n) => ({
+  id: `side${n}`,
+  title: `Option ${n}`,
+  perPage: 5, // each side of the detour gets a pop-up of its own
+  pageLabel: (d) => (sideDone(d, n) ? `Edit option ${n}` : `Option ${n}`),
+  inputs: [
+    [`name${n}`, `Option ${n} name`, 50, true, undefined, 'e.g. Suite'],
+    [`time${n}`, `Option ${n} travel time`, 50, true, undefined, 'e.g. 25 minutes'],
+    [`loc${n}`, `Option ${n} location name`, 100, true, undefined, 'e.g. Mozartplatz'],
+    [`img${n}`, `Option ${n} location image URL (optional)`, 500, false, undefined, 'https://www.imageURL.com'],
+    [`desc${n}`, `Option ${n}: what happens there`, 1200, true, 'paragraph', "Starts with \"where\", e.g. where they'll honor Mozart. Teams must rehearse and perform..."],
+  ],
+});
+
+// "In **Suite**, teams will travel 25 minutes to [**Mozartplatz**](image), where they'll..."
+const sideText = (d, n) => {
+  const place = d[`img${n}`] ? `[**${d[`loc${n}`]}**](${d[`img${n}`]})` : `**${d[`loc${n}`]}**`;
+  return `In **${d[`name${n}`]}**, teams will travel ${d[`time${n}`]} to ${place}, ${d[`desc${n}`]}`;
+};
+
 export const detour = {
   id: 'detour',
   label: 'Detour',
@@ -13,20 +39,20 @@ export const detour = {
   // The checklist and what to do next: general details, then each side of the detour.
   steps: (d) => [
     { label: 'Details', done: Boolean(hasLeg(d) && d.location) },
-    { label: 'Option 1', done: Boolean(d.name1 && d.desc1) },
-    { label: 'Option 2', done: Boolean(d.name2 && d.desc2) },
+    { label: 'Option 1', done: sideDone(d, 1) },
+    { label: 'Option 2', done: sideDone(d, 2) },
   ],
   pending: (d) => {
-    if (!hasLeg(d) || !d.location) return { page: 0, message: 'press **Fill in details** and enter the leg number and the location.' };
-    if (!d.name1 || !d.desc1) return { page: 1, message: 'press **Option 1** and enter its name and description.' };
-    if (!d.name2 || !d.desc2) return { page: 2, message: 'press **Option 2** and enter its name and description.' };
+    if (!hasLeg(d) || !d.location) return { page: 0, message: 'press **Fill in details** and enter the leg number and the area.' };
+    if (!sideDone(d, 1)) return { page: 1, message: 'press **Option 1** and fill in its name, travel time, location and what happens there.' };
+    if (!sideDone(d, 2)) return { page: 2, message: 'press **Option 2** and fill in its name, travel time, location and what happens there.' };
     return null;
   },
-  initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', name1: '', desc1: '', name2: '', desc2: '' }),
+  initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => d.location,
   draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
-  ready: (d) => hasLeg(d) && Boolean(d.location && d.name1 && d.desc1 && d.name2 && d.desc2),
+  ready: (d) => hasLeg(d) && Boolean(d.location) && sideDone(d, 1) && sideDone(d, 2),
   menus: () => [],
   sections: () => [
     { id: 'leg', title: 'Leg', inputs: [legField] },
@@ -39,38 +65,26 @@ export const detour = {
         ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
       ],
     },
-    {
-      id: 'side1',
-      title: 'Option 1',
-      perPage: 2, // each side of the detour gets a pop-up of its own
-      pageLabel: (d) => (d.name1 && d.desc1 ? 'Edit option 1' : 'Option 1'),
-      inputs: [
-        ['name1', 'Option 1 name', 50, true, undefined, 'e.g. Mangled'],
-        ['desc1', 'Option 1 description', 1500, true, 'paragraph', 'Describe option 1 task...'],
-      ],
-    },
-    {
-      id: 'side2',
-      title: 'Option 2',
-      perPage: 2,
-      pageLabel: (d) => (d.name2 && d.desc2 ? 'Edit option 2' : 'Option 2'),
-      inputs: [
-        ['name2', 'Option 2 name', 50, true, undefined, 'e.g. Tangled'],
-        ['desc2', 'Option 2 description', 1500, true, 'paragraph', 'Describe option 2 task...'],
-      ],
-    },
+    sideSection(1),
+    sideSection(2),
   ],
   outputs(d, origin) {
     const banner = gallery(bannerImage(origin, 'detour'));
     const [cmd1, cmd2] = [slug(d.name1), slug(d.name2)];
     const [show1, show2] = [cap(cmd1), cap(cmd2)];
     const switchShown = `Switch-L${d.leg}-Detour`;
-    const side = (name, desc, key, cmd) =>
+    const side = (name, n, cmd) =>
       cardOutput({
-        key: `detour:l${d.leg}:${key}`,
+        key: `detour:l${d.leg}:${n}`,
         tag: `${TEST_PREFIX}${cmd}`,
-        label: `Option ${key}: ${name}`,
-        embed: card([banner, text(`### DETOUR: ${name.toUpperCase()}`), text(desc), separator(), text(`If you would like to switch, use the command \`!${switchShown}\`.`)]),
+        label: `Option ${n}: ${name}`,
+        embed: card([
+          banner,
+          text(`### ${name.toUpperCase()}`),
+          text(`*${sideText(d, n)}*`),
+          text(`*If you'd like to perform this side of the detour, use the command \`!${cap(cmd)}\`.*`),
+          text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),
+        ]),
         title: `Detour: ${name}`,
         description: d.location,
       });
@@ -81,10 +95,10 @@ export const detour = {
         label: 'Detour arrival',
         embed: card([
           banner,
-          text(`### DETOUR: ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
+          text(`### ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
           text(
-            `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit **${d.location}** when you are ready. ` +
-              `If your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
+            `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit **${d.location}** when you are ready.` +
+              `\nIf your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
               'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
           ),
           d.image ? gallery(d.image) : null,
@@ -92,8 +106,8 @@ export const detour = {
         title: 'Detour',
         description: `${d.name1} or ${d.name2}`,
       }),
-      side(d.name1, d.desc1, '1', cmd1),
-      side(d.name2, d.desc2, '2', cmd2),
+      side(d.name1, 1, cmd1),
+      side(d.name2, 2, cmd2),
       tagOutput({
         tag: `${TEST_PREFIX}switch-l${d.leg}-detour`,
         label: `Switch (\`!${switchShown}\`)`,

@@ -26,7 +26,7 @@ export const accentFor = (parts) => {
 const text = (content) => ({ type: 10, content });
 const separator = () => ({ type: 14, divider: true, spacing: 2 });
 
-export function parseLegStart({ leg, departure, destination, money, flightTime }) {
+export function parseLegStart({ leg, departure, destination, money, flightTime, flightText = '' }) {
   const [depName, depImage = ''] = departure.split('|').map((s) => s.trim());
   const [dest, site = '', airport = ''] = destination.split('|').map((s) => s.trim());
   // The city is everything before the comma, hyphenated and capitalized: "New Delhi, India" is New-Delhi.
@@ -44,6 +44,7 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
     money: rawMoney,
     moneyDisplay: rawMoney ? `$${rawMoney}` : '',
     flightTime: /\bflight\b/i.test(flight) ? flight.replace(/\bhour flights?\b/i, 'hour flight') : `${flight} flight`,
+    flightText: flightText.trim(),
     moneyCommand: `!Claim-Leg${leg}-Money`,
     touchdownCommand: `!${slug}-Touchdown`,
   };
@@ -51,16 +52,18 @@ export function parseLegStart({ leg, departure, destination, money, flightTime }
 
 // Money and touchdown have no title: just an emoji at the left of the line.
 
+// The usual paragraph about the flight and where to go on arrival. Staff can replace it.
+export const flightParagraph = (d) =>
+  `All teams will be put onto the same, equalizing **${d.flightTime}** to ${d.country}.` +
+  (d.site ? ` Once there, make your way to **${d.site}** to receive your next clue.` : '');
+
 export function legStartEmbed(d, headerImage) {
   const parts = [
     { type: 12, items: [{ media: { url: headerImage } }] },
     text(`Make your way from **${d.departure}** to your next destination, **${d.destination}!**`),
     ...(d.departureImage ? [{ type: 12, items: [{ media: { url: d.departureImage } }] }] : []),
     separator(),
-    text(
-      `All teams will be put onto the same, equalizing **${d.flightTime}** to ${d.country}.` +
-        (d.site ? ` Once there, make your way to **${d.site}** to receive your next clue.` : ''),
-    ),
+    text(d.flightText || flightParagraph(d)),
     separator(),
   ];
   if (d.moneyDisplay) {

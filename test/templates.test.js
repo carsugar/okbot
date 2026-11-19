@@ -50,21 +50,27 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
 });
 
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
-  const out = run('detour', { location: 'Cajón Del Maipo', name1: 'Rock', desc1: 'Climb it.', name2: 'River', desc2: 'Raft it.', switchTime: '10 minutes' });
+  const out = run('detour', { location: 'Cajón Del Maipo', name1: 'Rock', time1: '10 minutes', loc1: 'The Cliff', img1: '', desc1: "where they'll climb it.", name2: 'River', time2: '15 minutes', loc2: 'The Bank', img2: 'https://x.dev/bank.png', desc2: "where they'll raft it.", switchTime: '10 minutes' });
   assert.deepEqual(out.map((o) => o.kind), ['card', 'card', 'card', 'tag']);
   assert.equal(out[0].tag, 'test-cdm-arrived');
-  assert.match(cardText(out[0]), /DETOUR: ROCK OR RIVER\?/);
+  assert.match(cardText(out[0]), /^### ROCK OR RIVER\?/m);
+  assert.doesNotMatch(cardText(out[0]), /DETOUR:/);
+  assert.match(cardText(out[0]), /ready\.\nIf your team chooses/);
+  assert.match(cardText(out[0]), /to travel and begin the other side/);
+  assert.doesNotMatch(cardText(out[0]), /10 minutes/);
   assert.match(cardText(out[0]), /`!Rock` and `!River`/);
   assert.match(cardText(out[0]), /`!Switch-L3-Detour`/);
   assert.equal(out[1].tag, 'test-rock');
-  assert.match(cardText(out[1]), /Climb it\./);
+  assert.equal(cardText(out[1]), "### ROCK\n*In **Rock**, teams will travel 10 minutes to **The Cliff**, where they'll climb it.*\n*If you'd like to perform this side of the detour, use the command `!Rock`.*\n*If you would like to switch, use the command `!Switch-L3-Detour`.*");
+  assert.match(cardText(out[2]), /to \[\*\*The Bank\*\*\]\(https:\/\/x\.dev\/bank\.png\), where they'll raft it\./);
+  assert.doesNotMatch(cardText(out[1]), /DETOUR/);
   assert.equal(images(out[1])[0], `${ORIGIN}/img/detour.webp?v=2`);
   assert.match(out[3].text, /travel \*\*10 minutes\*\* to the other detour/);
   assert.equal(new Set(out.filter((o) => o.kind === 'card').map((o) => o.key)).size, 3);
 });
 
 test('detour switch tag without a time just points at the other arrival command', () => {
-  const out = run('detour', { location: 'A B', name1: 'x', desc1: 'd', name2: 'y', desc2: 'e' });
+  const out = run('detour', { location: 'A B', name1: 'x', time1: '1 minute', loc1: 'P', desc1: 'd', name2: 'y', time2: '1 minute', loc2: 'Q', desc2: 'e' });
   assert.doesNotMatch(out[3].text, /You will travel/);
 });
 
@@ -110,7 +116,7 @@ test('output blocks show the tag text with the link for cards, plain text for ta
 test('every card from a full draft fits the link-preview limit', () => {
   const big = 'x'.repeat(400);
   const drafts = {
-    detour: { location: 'A B', name1: 'one', desc1: big, name2: 'two', desc2: big, switchTime: '5 min' },
+    detour: { location: 'A B', name1: 'one', time1: '5 min', loc1: 'X', desc1: big, name2: 'two', time2: '5 min', loc2: 'Y', desc2: big, switchTime: '5 min' },
     roadblock: { title: 'T', location: 'A B', clue: 'c', image: 'https://example.com/i.png' },
     pitstop: { location: 'A B', season: '4', image: 'https://example.com/i.png' },
     travel: travelDraft,
