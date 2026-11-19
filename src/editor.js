@@ -60,6 +60,11 @@ async function savedDraft(store, guildId, template, draft) {
   return old ? template.legacy.toDraft(old) : null;
 }
 
+// The big heading at the top of the tags to copy.
+const copyHeading = (count) =>
+  `# Copy and send ${count > 1 ? `these ${count} tags` : 'this tag'} to create ${count > 1 ? 'them' : 'it'}\n` +
+  `**No tags have been created yet.** ${count > 1 ? 'Copy each numbered block below and send it in the channel as its own message.' : 'Copy the block below and send it in the channel.'}`;
+
 async function save(interaction, env, ctx, origin, id, template, draft) {
   const outputs = template.ready(draft) ? template.outputs(draft, origin) : [];
   const tooLong = outputs.some((o) => o.kind === 'card' && embedBytes(o.embed) > MAX_EMBED_BYTES);
@@ -71,13 +76,13 @@ async function save(interaction, env, ctx, origin, id, template, draft) {
     const url = output.kind === 'card'
       ? `${origin}/route/${await store.save(`${draft.guildId}:${output.key}`, { embed: output.embed, title: output.title, description: output.description })}`
       : '';
-    blocks.push(outputBlock(output, url));
+    blocks.push(`${blocks.length + 1}. ${outputBlock(output, url)}`);
   }
   await store.saveSaved(`${draft.guildId}:${template.draftKey(draft)}`, draft);
 
   // The tags to copy come as one new private message (or a few if they are long), after the
   // panel. The panel itself only says what to do.
-  const messages = copyMessages(blocks);
+  const messages = copyMessages([copyHeading(blocks.length), ...blocks]);
   ctx.waitUntil((async () => { for (const message of messages) await sendFollowup(env, interaction.token, message); })());
   const many = blocks.length > 1;
   const where = messages.length > 1 ? `in the ${messages.length} messages below` : 'in the message below';

@@ -34,7 +34,7 @@ export function outputBlock(output, url) {
   const code = (body) => `\`\`\`\n${body}\n\`\`\``;
   if (output.kind === 'card') {
     const body = legTagText({ carlbotMention: CARLBOT_MENTION, tagName: output.tag, url });
-    return `**${output.label} (\`!${output.tag}\`)**\n${code(body)}\nPreview: ${url}`;
+    return `**${output.label} (\`!${output.tag}\`)**\n${code(body)}`;
   }
   if (output.kind === 'tag') return `**${output.label} (\`!${output.tag}\`)**\n${code(plainTag(output.tag, output.text))}`;
   return `**${output.label}**\n${code(output.text)}`;

@@ -109,7 +109,7 @@ test('output blocks show the tag text with the link for cards, plain text for ta
   const [arrival, clue] = run('roadblock', { title: 't', location: 'A B', clue: 'Do it.' });
   const card = outputBlock(arrival, 'https://okbot.example.dev/route/abc');
   assert.match(card, /tag \+ ab-arrived \[.*\]\(https:\/\/okbot\.example\.dev\/route\/abc\?v=\{unix\}\)/);
-  assert.match(card, /Preview: https:\/\/okbot\.example\.dev\/route\/abc/);
+  assert.doesNotMatch(card, /Preview/);
   assert.match(outputBlock(clue, 'https://okbot.example.dev/route/def'), /tag \+ rb-l3 \[.*\]\(https:\/\/okbot\.example\.dev\/route\/def\?v=\{unix\}\)/);
   assert.match(outputBlock({ kind: 'tag', tag: 'x', label: 'L', text: 'Do it.' }, ''), /tag \+ x Do it\./);
 });
