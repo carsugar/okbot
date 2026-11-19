@@ -93,17 +93,19 @@ export const travel = {
       : []),
   ],
   outputs(d, origin) {
+    const kind = d.type === 'touchdown' ? 'touchdown' : 'travel';
     const banner = gallery(bannerImage(origin));
     const transports = transportsOf(d);
     const inits = d.dest ? getInitials(d.dest) : '';
-    const routeParts = [banner, d.extra ? text(`*${d.extra}*`) : null];
+    const airport = d.airport ? (d.airportImage ? `[${d.airport}](${d.airportImage})` : `**${d.airport}**`) : '';
+    const routeParts = [banner, airport ? text(`*You have officially touched down at ${airport}!*`) : null, d.extra ? text(`*${d.extra}*`) : null];
     if (d.dest) {
       routeParts.push(
         text(`*${transports.length ? `Make your way by ${humanJoin(transports)} to **${d.dest}** to receive your next clue.` : `Make your way to **${d.dest}** to receive your next clue.`}*`),
         text(
           `*${
             transports.length
-              ? `For more information on how to reach this destination, use the command \`!${inits}-Travel\`. If you would like to pause, use the command \`!Pause\`.`
+              ? `For more information on how to reach this destination, use the command \`!${inits}-Travel\`.\nIf you would like to pause, use the command \`!Pause\`.`
               : `Once you arrive, use the command \`!${inits}-Arrived\`.`
           }*`,
         ),
@@ -111,7 +113,7 @@ export const travel = {
     }
     const outputs = [
       cardOutput({
-        key: `travel:${d.tagName}`,
+        key: `${kind}:${d.tagName}`,
         tag: `${TEST_PREFIX}${d.tagName}`,
         label: 'Route Info tag',
         embed: card(routeParts),
@@ -124,7 +126,7 @@ export const travel = {
     if (entries.length > 1) {
       outputs.push(
         cardOutput({
-          key: `travel:${d.tagName}:info`,
+          key: `${kind}:${d.tagName}:info`,
           tag: `${TEST_PREFIX}${inits.toLowerCase()}-travel`,
           label: 'Travel tag',
           embed: card([
@@ -148,5 +150,47 @@ export const travel = {
       outputs.push(extraOutput({ label, text: command }));
     }
     return outputs;
+  },
+};
+
+// Route Info for teams who have just landed: the same as Travel, with a line first saying they
+// touched down at the airport (the name can link to a picture of it).
+export const touchdown = {
+  ...travel,
+  id: 'touchdown',
+  label: 'Route Info: Airport Touchdown',
+  modalChoice: { ...travel.modalChoice, at: 2 },
+  steps: (d) => [
+    { label: 'Details', detail: 'Tag name, destination, ways to get there', done: Boolean(d.tagName) },
+    { label: 'Airport & extra', detail: 'Airport, airport image, extra content', done: Boolean(d.airport) },
+    ...(d.dest && transportsOf(d).length ? [{ label: 'Times and costs', done: !touchdown.pending(d) }] : []),
+  ],
+  pending: (d) => {
+    const missing = d.dest ? transportsOf(d).filter((t) => !parseTimeCost(d[`t_${t}`]).time) : [];
+    return missing.length
+      ? { page: 2, message: `press **Times and costs** and enter the time (and cost) for ${humanJoin(missing)}.` }
+      : null;
+  },
+  initial: (o) => ({ ...travel.initial(o), airport: '', airportImage: '' }),
+  describe: (d) => d.airport || d.dest || d.tagName,
+  draftKey: (d) => (d.tagName ? `touchdown:${d.tagName}` : null),
+  sections: (d) => {
+    const [route, ...rest] = travel.sections(d);
+    const pick = (keys) => route.inputs.filter(([k]) => keys.includes(k));
+    return [
+      { ...route, inputs: pick(['tagName', 'dest', 'custom']) },
+      {
+        id: 'airport',
+        title: 'Airport',
+        perPage: 3,
+        pageLabel: 'Airport & extra',
+        inputs: [
+          ['airport', 'Airport name', 100, false, undefined, 'e.g. Salzburg Airport'],
+          ['airportImage', 'Airport image URL (optional)', 500, false, undefined, 'https://www.imageURL.com', 'The airport name links to this picture. Leave blank for no link.'],
+          ...pick(['extra']),
+        ],
+      },
+      ...rest,
+    ];
   },
 };

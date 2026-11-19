@@ -14,7 +14,7 @@ test('create_clue offers every template as a choice and only needs the type', ()
   assert.deepEqual(TEMPLATE_CHOICES.map((c) => c.value), Object.keys(TEMPLATES));
   const type = CREATE_CLUE_COMMAND.options.find((o) => o.name === 'type');
   assert.equal(type.required, true);
-  assert.equal(type.choices.length, 6);
+  assert.equal(type.choices.length, 7);
   assert.deepEqual(CREATE_CLUE_COMMAND.options.map((o) => o.name), ['type']);
 });
 
@@ -171,4 +171,15 @@ test('travel reads the one-box time and cost into the Travel card, dearest first
   assert.ok(t.indexOf('TAXI') < t.indexOf('BUS'));
   assert.match(t, /\*Duration of Ride: 30 min\*\n\*Cost: \$20\*/);
   assert.match(t, /\*Duration of Ride: 1 hour, 20 min\*\n\*Cost: \$5\*/);
+});
+
+test('airport touchdown is the travel card with a touched-down line first, linking the airport picture', () => {
+  const d = { type: 'touchdown', tagName: 'mg-arrived', dest: 'Mirabell Gardens', airport: 'Salzburg Airport', airportImage: 'https://x.com/a.png', transports: ['taxi', 'bus'], t_taxi: '10 min, $5', t_bus: '20 min, $1' };
+  const [card] = run('touchdown', d);
+  assert.equal(card.key, 'touchdown:mg-arrived');
+  const parts = card.embed.component.components.filter((c) => c.type === 10).map((c) => c.content);
+  assert.equal(parts[0], '*You have officially touched down at [Salzburg Airport](https://x.com/a.png)!*');
+  assert.match(parts[1], /Make your way by taxi or bus to \*\*Mirabell Gardens\*\*/);
+  const plain = run('touchdown', { ...d, airportImage: '' })[0].embed.component.components.filter((c) => c.type === 10)[0].content;
+  assert.equal(plain, '*You have officially touched down at **Salzburg Airport**!*');
 });
