@@ -38,24 +38,24 @@ export const detour = {
   hint: 'Work through the steps below to see the cards.',
   // The checklist and what to do next: general details, then each side of the detour.
   steps: (d) => [
-    { label: 'Details', detail: 'Leg number, location, image, switch time', done: Boolean(hasLeg(d) && d.location) },
+    { label: 'Details', detail: 'Leg number, arrival image, switch time', done: hasLeg(d) },
     { label: 'Option 1', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 1) },
     { label: 'Option 2', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 2) },
   ],
   initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
   // A short description of a saved clue, for the /edit_clue list.
-  describe: (d) => d.location,
+  describe: (d) => d.location || `${d.name1} or ${d.name2}`,
   draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
-  ready: (d) => hasLeg(d) && Boolean(d.location) && sideDone(d, 1) && sideDone(d, 2),
+  ready: (d) => hasLeg(d) && sideDone(d, 1) && sideDone(d, 2),
   menus: () => [],
   sections: () => [
     { id: 'leg', title: 'Leg', inputs: [legField] },
     {
       id: 'location',
-      title: 'Location and switch',
+      title: 'Arrival and switch',
       inputs: [
-        ['location', 'Location name', 100, true, undefined, 'e.g. San José'],
-        ['image', 'Location image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
+        ['location', 'Detour area name (optional)', 100, false, undefined, 'e.g. San José', 'Only used for the arrival tag name and text. Leave blank to skip.'],
+        ['image', 'Arrival image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
         ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
       ],
     },
@@ -79,19 +79,19 @@ export const detour = {
           text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),
         ]),
         title: `Detour: ${name}`,
-        description: d.location,
+        description: d.location || d.name1,
       });
     return [
       cardOutput({
         key: `detour:l${d.leg}:arrival`,
-        tag: `${TEST_PREFIX}${getInitials(d.location).toLowerCase()}-arrived`,
+        tag: `${TEST_PREFIX}${d.location ? `${getInitials(d.location).toLowerCase()}-arrived` : `l${d.leg}-detour-arrived`}`,
         label: 'Detour arrival',
         embed: card([
           banner,
           text(`### ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
           text(
             italic(
-              `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit **${d.location}** when you are ready.` +
+              `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit ${d.location ? `**${d.location}**` : 'the detour'} when you are ready.` +
                 `\nIf your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
                 'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
             ),

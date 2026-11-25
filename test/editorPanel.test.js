@@ -207,9 +207,9 @@ test('detour is guided: details, then a pop-up per option with five boxes, a che
 
   const text = (d) => plain(panelData(ID, t, d, ORIGIN));
   const edit = (d, i) => buttons(panelData(ID, t, d, ORIGIN)).find((b) => b.custom_id.endsWith(`:${i}`));
-  assert.match(text(blank), /👉 \*\*1\. Details\*\*[^]*⬜ \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*[^]*⬜ \*\*4\. Save\*\*/);
+  assert.match(text(blank), /✅ \*\*1\. Details\*\*[^]*👉 \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*[^]*⬜ \*\*4\. Save\*\*/);
   assert.match(text(blank), /Go down the list\.\*\* Press the blue button/);
-  assert.equal(edit(blank, 0).style, 1);
+  assert.equal(edit(blank, 1).style, 1);
 
   const withLocation = { ...blank, location: 'San José' };
   assert.match(text(withLocation), /✅ \*\*1\. Details\*\*[^]*👉 \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*/);
