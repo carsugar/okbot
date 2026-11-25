@@ -14,6 +14,9 @@ const sideDone = (d, n) => Boolean(d[`name${n}`] && d[`time${n}`] && d[`loc${n}`
 // The arrival tag: the name typed, or for detours saved before it was asked, the old area initials.
 const arrivalTag = (d) => d.tagName || (d.location ? `${getInitials(d.location).toLowerCase()}-arrived` : '');
 
+// The tag that shows an option's details: typed, or for detours saved before it was asked, the option name.
+const optionTag = (d, n) => d[`tag${n}`] || (d.location ? slug(d[`name${n}`]) : '');
+
 const sideSection = (n) => ({
   id: `side${n}`,
   title: `Option ${n}`,
@@ -41,44 +44,53 @@ export const detour = {
   hint: 'Work through the steps below to see the cards.',
   // The checklist and what to do next: general details, then each side of the detour.
   steps: (d) => [
-    { label: 'Details', detail: 'Leg number, tag name, image, switch time', done: Boolean(hasLeg(d) && arrivalTag(d)) },
+    { label: 'Details', detail: 'Leg number and the three tag names', done: Boolean(hasLeg(d) && arrivalTag(d) && optionTag(d, 1) && optionTag(d, 2)) },
     { label: 'Option 1', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 1) },
     { label: 'Option 2', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 2) },
+    { label: 'Arrival image and switch time', detail: 'Image, switch travel time', done: Boolean(d.image || d.switchTime), optional: true },
   ],
-  initial: ({ leg, tag }) => ({ leg: legStartValue(leg), tagName: tag ?? '', location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
+  initial: ({ leg, tag }) => ({ leg: legStartValue(leg), tagName: tag ?? '', tag1: '', tag2: '', location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => d.location || `${d.name1} or ${d.name2}`,
   draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
-  ready: (d) => hasLeg(d) && Boolean(arrivalTag(d)) && sideDone(d, 1) && sideDone(d, 2),
+  ready: (d) => hasLeg(d) && Boolean(arrivalTag(d)) && sideDone(d, 1) && sideDone(d, 2) && Boolean(optionTag(d, 1) && optionTag(d, 2)),
   menus: () => [],
   sections: () => [
     { id: 'leg', title: 'Leg', inputs: [legField] },
     {
-      id: 'location',
-      title: 'Tag, image and switch',
+      id: 'tags',
+      title: 'Tag names',
       inputs: [
         ['tagName', 'Tag name for the detour start', 50, true, undefined, 'e.g. cdm-detour, san-jose-detour', 'The tag staff send to start the detour.'],
-        ['image', 'Arrival image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
-        ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
+        ['tag1', 'Tag name for option 1 details', 50, true, undefined, 'e.g. cdm-detour-suite', 'Not the option name. Teams use that to start the option.'],
+        ['tag2', 'Tag name for option 2 details', 50, true, undefined, 'e.g. cdm-detour-garden', 'Not the option name. Teams use that to start the option.'],
       ],
     },
     sideSection(1),
     sideSection(2),
+    {
+      id: 'extras',
+      title: 'Arrival image and switch time',
+      inputs: [
+        ['image', 'Arrival image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
+        ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
+      ],
+    },
   ],
   outputs(d, origin) {
     const banner = gallery(bannerImage(origin, 'detour'));
-    const [cmd1, cmd2] = [slug(d.name1), slug(d.name2)];
-    const [show1, show2] = [cap(cmd1), cap(cmd2)];
+    // What teams type to start an option is its name; the card that shows its details has its own tag.
+    const [show1, show2] = [cap(optionTag(d, 1)), cap(optionTag(d, 2))];
     const switchShown = `Switch-L${d.leg}-Detour`;
-    const side = (name, n, cmd) =>
+    const side = (name, n) =>
       cardOutput({
         key: `detour:l${d.leg}:${n}`,
-        tag: `${TEST_PREFIX}${cmd}`,
+        tag: `${TEST_PREFIX}${optionTag(d, n)}`,
         label: `Option ${n}: ${name}`,
         embed: card([
           banner,
           text(`*${sideText(d, n)}*`),
-          text(`*If you'd like to perform this side of the detour, use the command \`!${cap(cmd)}\`.*`),
+          text(`*If you'd like to perform this side of the detour, use the command \`!${cap(slug(name))}\`.*`),
           text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),
         ]),
         title: `Detour: ${name}`,
@@ -104,8 +116,8 @@ export const detour = {
         title: 'Detour',
         description: `${d.name1} or ${d.name2}`,
       }),
-      side(d.name1, 1, cmd1),
-      side(d.name2, 2, cmd2),
+      side(d.name1, 1),
+      side(d.name2, 2),
       tagOutput({
         tag: `${TEST_PREFIX}switch-l${d.leg}-detour`,
         label: `Switch (\`!${switchShown}\`)`,
