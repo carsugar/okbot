@@ -78,7 +78,7 @@ export const detour = {
         embed: card([
           banner,
           text(`*${sideText(d, n)}*`),
-          text(`*If you'd like to perform this side of the detour, use the command \`!${cap(cmd)}\`.*`),
+          text(`*If you'd like to perform this side of the detour, use the command \`!${cap(cmd)}-Start\`.*`),
           text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),
         ]),
         title: `Detour: ${name}`,
