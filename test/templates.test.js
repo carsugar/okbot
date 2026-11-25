@@ -54,7 +54,7 @@ test('detour makes an arrival card, one card per side, and a plain switch tag', 
   const out = run('detour', { tagName: 'cdm-detour', location: 'Cajón Del Maipo', name1: 'Rock', time1: '10 minutes', loc1: 'The Cliff', img1: '', desc1: "where they'll climb it.", name2: 'River', time2: '15 minutes', loc2: 'The Bank', img2: 'https://x.dev/bank.png', desc2: "where they'll raft it.", switchTime: '10 minutes' });
   assert.deepEqual(out.map((o) => o.kind), ['card', 'card', 'card', 'tag']);
   assert.equal(out[0].tag, 'cdm-detour');
-  assert.match(cardText(out[0]), /^# ROCK OR RIVER\?/m);
+  assert.match(cardText(out[0]), /^# ROCK or RIVER\?/m);
   assert.doesNotMatch(cardText(out[0]), /DETOUR:/);
   assert.match(cardText(out[0]), /ready\.\*\n\*If your team chooses/);
   assert.match(cardText(out[0]), /to travel and begin the other side/);

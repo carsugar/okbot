@@ -92,7 +92,7 @@ export const detour = {
         label: 'Detour start',
         embed: card([
           banner,
-          text(`# ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
+          text(`# ${d.name1.toUpperCase()} or ${d.name2.toUpperCase()}?`),
           separator(),
           text(italic(`Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit the detour when you are ready.`)),
           text(italic(
