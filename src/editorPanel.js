@@ -172,6 +172,7 @@ export function panelData(draftId, template, draft, origin, status = '', saved =
       ...stepRows,
       ...menuRows,
       saveRow,
+      ...(draft.savedKey ? [section('🗑️ **Delete this clue**\n-# Removes it from the `/edit_clue` list. Tags already created stay as they are.', button(4, 'Delete', id('delete')))] : []),
       ...(saved ? [text(saved)] : []),
     ],
   };
@@ -193,3 +194,12 @@ export function copyMessages(blocks) {
   }
   return groups.map((group) => ({ flags: IS_COMPONENTS_V2 | 64, components: group.map(text) }));
 }
+
+// Asked before a saved clue is deleted.
+export const deleteConfirm = (draftId, label) => ({
+  flags: IS_COMPONENTS_V2,
+  components: [
+    text(`## 🗑️ Delete ${label}?\nIt will be removed from the \`/edit_clue\` list and can't be brought back. Tags you already created in Carlbot are not touched, so delete those yourself if you want them gone.`),
+    { type: 1, components: [button(4, 'Yes, delete', `le:confirmdelete:${draftId}`), button(2, 'Cancel', `le:cancel:${draftId}`)] },
+  ],
+});

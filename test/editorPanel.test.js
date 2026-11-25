@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyModal, editModal, modalPages, panelData, copyMessages } from '../src/editorPanel.js';
+import { applyModal, editModal, modalPages, panelData, copyMessages, deleteConfirm } from '../src/editorPanel.js';
 import { TEMPLATES } from '../src/templates/index.js';
 import { parseLegStart } from '../src/legStartCard.js';
 import { draftToLeg } from '../src/templates/legStart.js';
@@ -335,4 +335,12 @@ test('the tags to copy go in one message when they fit, and a few when they do n
   const several = copyMessages([long, long, long]);
   assert.deepEqual(several.map((m) => m.components.length), [2, 1]);
   assert.deepEqual(copyMessages([]), []);
+});
+
+test('only a clue opened from /edit_clue has a Delete button, and it asks first', () => {
+  assert.doesNotMatch(JSON.stringify(panelData(ID, leg, readyLeg(), ORIGIN)), /le:delete:/);
+  assert.match(JSON.stringify(panelData(ID, leg, { ...readyLeg(), savedKey: 'g:leg:l3' }, ORIGIN)), /le:delete:/);
+  const ask = JSON.stringify(deleteConfirm(ID, 'Leg 3'));
+  assert.match(ask, /le:confirmdelete:/);
+  assert.match(ask, /le:cancel:/);
 });

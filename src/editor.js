@@ -4,7 +4,7 @@ import { routeStore } from './routeStore.js';
 import { TEMPLATES } from './templates/index.js';
 import { tagOf, sameTag, clueLabel } from './clueTags.js';
 import { outputBlock } from './templates/common.js';
-import { applyModal, applyMenu, editModal, panelData, copyMessages } from './editorPanel.js';
+import { applyModal, applyMenu, editModal, panelData, copyMessages, deleteConfirm } from './editorPanel.js';
 
 // The clue editor: a private panel with a live preview and Edit buttons that open pop-ups with
 // every field. /create_clue starts a new clue, /edit_clue reopens a saved one by its tag. The
@@ -34,7 +34,7 @@ const savedClues = async (env, guildId) =>
 export async function editSaved(interaction, env, origin, tag) {
   const found = (await savedClues(env, interaction.guild_id)).find((c) => sameTag(c.tag, tag ?? ''));
   if (!found) return privately(`No saved clue has the tag \`${tag}\`. Start typing the tag and pick one from the list.`);
-  const draft = { ...found.draft, type: found.draft.type, guildId: interaction.guild_id, touched: true };
+  const draft = { ...found.draft, type: found.draft.type, guildId: interaction.guild_id, touched: true, savedKey: `${interaction.guild_id}:${TEMPLATES[found.draft.type].draftKey(found.draft)}` };
   await routeStore(env).saveDraft(interaction.id, draft);
   return panel(4, interaction.id, TEMPLATES[draft.type], draft, origin, '', EPHEMERAL);
 }
@@ -102,6 +102,13 @@ export async function handleEditorComponent(interaction, env, ctx, origin) {
   const template = TEMPLATES[draft.type];
 
   if (action === 'edit') return new JsonResponse({ type: 9, data: editModal(id, template, Number(part), draft) });
+
+  if (action === 'delete') return new JsonResponse({ type: 7, data: deleteConfirm(id, clueLabel(draft) || 'this clue') });
+  if (action === 'cancel') return panel(7, id, template, draft, origin);
+  if (action === 'confirmdelete') {
+    if (draft.savedKey) await store.deleteSaved(draft.savedKey);
+    return new JsonResponse({ type: 7, data: { flags: 1 << 15, components: [{ type: 10, content: `🗑️ **Deleted ${clueLabel(draft) || 'the clue'}.** It is gone from \`/edit_clue\`.` }] } });
+  }
 
   if (action === 'menu') {
     const next = applyMenu(draft, template, part, interaction.data.values);

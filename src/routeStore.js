@@ -33,6 +33,10 @@ export class RouteStore extends DurableObject {
     return (await this.ctx.storage.get(`saved:${key}`)) ?? null;
   }
 
+  async deleteSaved(key) {
+    await this.ctx.storage.delete(`saved:${key}`);
+  }
+
   // Every saved clue draft of one server.
   async listSaved(guildId) {
     return [...(await this.ctx.storage.list({ prefix: `saved:${guildId}:` })).values()];
