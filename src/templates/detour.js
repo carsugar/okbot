@@ -92,14 +92,13 @@ export const detour = {
         label: 'Detour start',
         embed: card([
           banner,
-          text(`### ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
-          text(
-            italic(
-              `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit the detour when you are ready.` +
-                `\nIf your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
-                'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
-            ),
-          ),
+          text(`# ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
+          separator(),
+          text(italic(`Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit the detour when you are ready.`)),
+          text(italic(
+            `If your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
+              'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
+          )),
           d.image ? gallery(d.image) : null,
         ]),
         title: 'Detour',
