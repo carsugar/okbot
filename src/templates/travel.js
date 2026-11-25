@@ -1,7 +1,7 @@
 import { bannerImage } from '../legStartCard.js';
 import { humanJoin, getInitials, travelCmdSuffix, travelVerb, buildIndividualCommand, TRAVEL_EMOJIS, TRAVEL_DURATION_LABELS } from '../tagTemplates.js';
 import SHORTCODES from '../emojiShortcodes.js';
-import { TEST_PREFIX, card, gallery, text, separator, cardOutput, extraOutput } from './common.js';
+import { legStartValue, TEST_PREFIX, card, gallery, text, separator, cardOutput, extraOutput } from './common.js';
 
 export const TRANSPORTS = [
   { value: 'taxi', label: '🚕 Taxi' },
@@ -99,7 +99,7 @@ export const travel = {
       ? { page: 1, message: `press **Times and costs** and enter the time (and cost) for ${humanJoin(missing)}. The Travel tag and its commands need them.` }
       : null;
   },
-  initial: ({ tag }) => ({ tagName: tag ?? '', dest: '', extra: '', custom: '', customEmoji: '', transports: [] }),
+  initial: ({ tag, leg }) => ({ tagName: tag ?? '', leg: legStartValue(leg), dest: '', extra: '', custom: '', customEmoji: '', transports: [] }),
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => d.dest || d.tagName,
   draftKey: (d) => (d.tagName ? `travel:${d.tagName}` : null),
@@ -112,8 +112,8 @@ export const travel = {
       title: 'Tag and destination',
       inputs: [
         ['tagName', 'Tag name', 50, true, undefined, 'e.g. cdm-arrived, dopamine-land'],
+        ['leg', 'Leg number (optional)', 3, false, undefined, 'e.g. 10', 'Only used to sort the /edit_clue list.'],
         ['dest', 'Destination (blank skips welcome text)', 200, false, undefined, 'e.g. Cajón Del Maipo'],
-        ['extra', 'Extra content (optional)', 1000, false, 'paragraph', 'Additional travel information, warnings, etc...'],
         CUSTOM_BOX,
       ],
     },
@@ -127,6 +127,9 @@ export const travel = {
           },
         ]
       : []),
+    { id: 'extra', title: 'Extra content', inputs: [
+      ['extra', 'Extra content (optional)', 1000, false, 'paragraph', 'Additional travel information, warnings, etc...'],
+    ] },
   ],
   outputs(d, origin) {
     const kind = d.type === 'touchdown' ? 'touchdown' : 'travel';

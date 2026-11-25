@@ -107,11 +107,11 @@ test('a status message is shown on the panel when given', () => {
   assert.match(JSON.stringify(panelData(ID, leg, readyLeg(), ORIGIN, 'Saved! tag text')), /Saved! tag text/);
 });
 
-test('travel has tick boxes for the ways to get there inside its first pop-up, after tag, destination and extra', () => {
+test('travel has tick boxes for the ways to get there inside its first pop-up, after tag, leg and destination', () => {
   const travel = TEMPLATES.travel;
   const d = { ...travel.initial({ tag: 'cdm' }), transports: ['taxi', 'bus'] };
   const m = editModal(ID, travel, 0, d);
-  assert.deepEqual(m.components.map((c) => c.component.custom_id), ['tagName', 'dest', 'extra', 'transports', 'custom']);
+  assert.deepEqual(m.components.map((c) => c.component.custom_id), ['tagName', 'leg', 'dest', 'transports', 'custom']);
   const boxes = m.components[3].component;
   assert.equal(boxes.type, 22);
   assert.deepEqual(boxes.options.map((o) => o.value), ['taxi', 'bus', 'walking', 'custom']);
@@ -131,12 +131,12 @@ test('ticking boxes and submitting the first travel pop-up sets the transports',
 
 test('all the times and costs share one pop-up, one box per transport and one for the custom emoji', () => {
   const travel = TEMPLATES.travel;
-  assert.equal(modalPages(travel, travel.initial({ tag: 'x' })).length, 1);
+  assert.equal(modalPages(travel, travel.initial({ tag: 'x' })).length, 2);
   const all = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus', 'walking', 'custom'], custom: 'tuk tuk' };
-  assert.equal(modalPages(travel, all).length, 2);
+  assert.equal(modalPages(travel, all).length, 3);
   assert.deepEqual(pagesOf(travel, all)[1].map((i) => i[0]), ['t_taxi', 't_bus', 't_walking', 't_tuk tuk', 'customEmoji']);
   const two = { ...travel.initial({ tag: 'x' }), transports: ['taxi', 'bus'] };
-  assert.deepEqual(pagesOf(travel, two)[1].map((i) => i[0]), ['t_taxi', 't_bus']);
+  assert.deepEqual(pagesOf(travel, two)[1].map((i) => i[0]), ['t_taxi', 't_bus', 'extra']);
 });
 
 test('leg-based cards ask for the leg number in the pop-up and are not ready without a number', () => {
