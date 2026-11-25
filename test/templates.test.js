@@ -51,9 +51,9 @@ test('roadblock makes an arrival card and a clue card with the banner and title'
 });
 
 test('detour makes an arrival card, one card per side, and a plain switch tag', () => {
-  const out = run('detour', { location: 'Cajón Del Maipo', name1: 'Rock', time1: '10 minutes', loc1: 'The Cliff', img1: '', desc1: "where they'll climb it.", name2: 'River', time2: '15 minutes', loc2: 'The Bank', img2: 'https://x.dev/bank.png', desc2: "where they'll raft it.", switchTime: '10 minutes' });
+  const out = run('detour', { tagName: 'cdm-detour', location: 'Cajón Del Maipo', name1: 'Rock', time1: '10 minutes', loc1: 'The Cliff', img1: '', desc1: "where they'll climb it.", name2: 'River', time2: '15 minutes', loc2: 'The Bank', img2: 'https://x.dev/bank.png', desc2: "where they'll raft it.", switchTime: '10 minutes' });
   assert.deepEqual(out.map((o) => o.kind), ['card', 'card', 'card', 'tag']);
-  assert.equal(out[0].tag, 'cdm-arrived');
+  assert.equal(out[0].tag, 'cdm-detour');
   assert.match(cardText(out[0]), /^### ROCK OR RIVER\?/m);
   assert.doesNotMatch(cardText(out[0]), /DETOUR:/);
   assert.match(cardText(out[0]), /ready\.\*\n\*If your team chooses/);
@@ -71,7 +71,7 @@ test('detour makes an arrival card, one card per side, and a plain switch tag', 
 });
 
 test('detour switch tag without a time just points at the other arrival command', () => {
-  const out = run('detour', { location: 'A B', name1: 'x', time1: '1 minute', loc1: 'P', desc1: 'd', name2: 'y', time2: '1 minute', loc2: 'Q', desc2: 'e' });
+  const out = run('detour', { tagName: 'ab-detour', location: 'A B', name1: 'x', time1: '1 minute', loc1: 'P', desc1: 'd', name2: 'y', time2: '1 minute', loc2: 'Q', desc2: 'e' });
   assert.doesNotMatch(out[3].text, /You will travel/);
 });
 

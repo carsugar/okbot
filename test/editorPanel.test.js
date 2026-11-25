@@ -200,18 +200,18 @@ test('detour is guided: details, then a pop-up per option with five boxes, a che
   const t = TEMPLATES.detour;
   const blank = { ...t.initial({ leg: 4 }), touched: true };
   assert.deepEqual(pagesOf(t, blank).map((p) => p.map((i) => i[0])), [
-    ['leg', 'location', 'image', 'switchTime'],
+    ['leg', 'tagName', 'image', 'switchTime'],
     ['name1', 'time1', 'loc1', 'img1', 'desc1'],
     ['name2', 'time2', 'loc2', 'img2', 'desc2'],
   ]);
 
   const text = (d) => plain(panelData(ID, t, d, ORIGIN));
   const edit = (d, i) => buttons(panelData(ID, t, d, ORIGIN)).find((b) => b.custom_id.endsWith(`:${i}`));
-  assert.match(text(blank), /✅ \*\*1\. Details\*\*[^]*👉 \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*[^]*⬜ \*\*4\. Save\*\*/);
+  assert.match(text(blank), /👉 \*\*1\. Details\*\*[^]*⬜ \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*[^]*⬜ \*\*4\. Save\*\*/);
   assert.match(text(blank), /Go down the list\.\*\* Press the blue button/);
-  assert.equal(edit(blank, 1).style, 1);
+  assert.equal(edit(blank, 0).style, 1);
 
-  const withLocation = { ...blank, location: 'San José' };
+  const withLocation = { ...blank, tagName: 'sj-detour' };
   assert.match(text(withLocation), /✅ \*\*1\. Details\*\*[^]*👉 \*\*2\. Option 1\*\*[^]*⬜ \*\*3\. Option 2\*\*/);
   assert.equal(edit(withLocation, 1).style, 1);
   assert.equal(edit(withLocation, 2).style, 2);

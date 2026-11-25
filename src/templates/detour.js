@@ -11,6 +11,9 @@ const SIDE_KEYS = (n) => [`name${n}`, `time${n}`, `loc${n}`, `img${n}`, `desc${n
 const blankSide = (n) => Object.fromEntries(SIDE_KEYS(n).map((k) => [k, '']));
 const sideDone = (d, n) => Boolean(d[`name${n}`] && d[`time${n}`] && d[`loc${n}`] && d[`desc${n}`]);
 
+// The arrival tag: the name typed, or for detours saved before it was asked, the old area initials.
+const arrivalTag = (d) => d.tagName || (d.location ? `${getInitials(d.location).toLowerCase()}-arrived` : '');
+
 const sideSection = (n) => ({
   id: `side${n}`,
   title: `Option ${n}`,
@@ -38,23 +41,23 @@ export const detour = {
   hint: 'Work through the steps below to see the cards.',
   // The checklist and what to do next: general details, then each side of the detour.
   steps: (d) => [
-    { label: 'Details', detail: 'Leg number, arrival image, switch time', done: hasLeg(d) },
+    { label: 'Details', detail: 'Leg number, tag name, image, switch time', done: Boolean(hasLeg(d) && arrivalTag(d)) },
     { label: 'Option 1', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 1) },
     { label: 'Option 2', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 2) },
   ],
-  initial: ({ leg }) => ({ leg: legStartValue(leg), location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
+  initial: ({ leg, tag }) => ({ leg: legStartValue(leg), tagName: tag ?? '', location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
   // A short description of a saved clue, for the /edit_clue list.
   describe: (d) => d.location || `${d.name1} or ${d.name2}`,
   draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
-  ready: (d) => hasLeg(d) && sideDone(d, 1) && sideDone(d, 2),
+  ready: (d) => hasLeg(d) && Boolean(arrivalTag(d)) && sideDone(d, 1) && sideDone(d, 2),
   menus: () => [],
   sections: () => [
     { id: 'leg', title: 'Leg', inputs: [legField] },
     {
       id: 'location',
-      title: 'Arrival and switch',
+      title: 'Tag, image and switch',
       inputs: [
-        ['location', 'Detour area name (optional)', 100, false, undefined, 'e.g. San José', 'Only used for the arrival tag name and text. Leave blank to skip.'],
+        ['tagName', 'Tag name for the detour start', 50, true, undefined, 'e.g. cdm-detour, san-jose-detour', 'The tag staff send to start the detour.'],
         ['image', 'Arrival image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
         ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
       ],
@@ -84,8 +87,8 @@ export const detour = {
     return [
       cardOutput({
         key: `detour:l${d.leg}:arrival`,
-        tag: `${TEST_PREFIX}${d.location ? `${getInitials(d.location).toLowerCase()}-arrived` : `l${d.leg}-detour-arrived`}`,
-        label: 'Detour arrival',
+        tag: `${TEST_PREFIX}${arrivalTag(d)}`,
+        label: 'Detour start',
         embed: card([
           banner,
           text(`### ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
