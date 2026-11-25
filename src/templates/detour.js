@@ -23,15 +23,14 @@ const sideSection = (n) => ({
     [`name${n}`, `Option ${n} name`, 50, true, undefined, 'e.g. Suite'],
     [`time${n}`, `Option ${n} travel time`, 50, true, undefined, 'e.g. 25 minutes'],
     [`loc${n}`, `Option ${n} location name`, 100, true, undefined, 'e.g. Mozartplatz'],
-    [`img${n}`, `Option ${n} location image URL (optional)`, 500, false, undefined, 'https://www.imageURL.com', 'The location name links to this picture. Leave blank for no link.'],
+    [`img${n}`, `Option ${n} location image URL (optional)`, 500, false, undefined, 'https://www.imageURL.com', 'Shown under the text on the option card. Leave blank for none.'],
     [`desc${n}`, `Option ${n}: what happens there`, 1200, true, 'paragraph', "e.g. where they'll honor Mozart. Teams must rehearse and perform one of his pieces.", 'Start with "where". It follows "In [name], teams will travel [time] to [location],"'],
   ],
 });
 
-// "In **Suite**, teams will travel 25 minutes to [**Mozartplatz**](image), where they'll..."
+// "In **Suite**, teams will travel 25 minutes to **Mozartplatz**, where they'll..."
 const sideText = (d, n) => {
-  const place = d[`img${n}`] ? `[**${d[`loc${n}`]}**](${d[`img${n}`]})` : `**${d[`loc${n}`]}**`;
-  return `In **${d[`name${n}`]}**, teams will travel ${d[`time${n}`]} to ${place}, ${d[`desc${n}`]}`;
+  return `In **${d[`name${n}`]}**, teams will travel ${d[`time${n}`]} to **${d[`loc${n}`]}**, ${d[`desc${n}`]}`;
 };
 
 export const detour = {
@@ -78,6 +77,7 @@ export const detour = {
         embed: card([
           banner,
           text(`*${sideText(d, n)}*`),
+          d[`img${n}`] ? gallery(d[`img${n}`]) : null,
           text(`*If you'd like to perform this side of the detour, use the command \`!${cap(cmd)}-Start\`.*`),
           text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),
         ]),

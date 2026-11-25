@@ -322,7 +322,7 @@ test('the detour boxes explain how their text is used', () => {
   const boxes = editModal(ID, TEMPLATES.detour, 1, d).components;
   const byKey = Object.fromEntries(boxes.map((b) => [b.component.custom_id, b]));
   assert.match(byKey.desc1.description, /Start with "where"/);
-  assert.match(byKey.img1.description, /links to this picture/);
+  assert.match(byKey.img1.description, /Shown under the text/);
   for (const b of boxes) assert.ok((b.description ?? '').length <= 100);
 });
 

@@ -63,7 +63,9 @@ test('detour makes an arrival card, one card per side, and a plain switch tag', 
   assert.match(cardText(out[0]), /`!Switch-L3-Detour`/);
   assert.equal(out[1].tag, 'rock');
   assert.equal(cardText(out[1]), "*In **Rock**, teams will travel 10 minutes to **The Cliff**, where they'll climb it.*\n*If you'd like to perform this side of the detour, use the command `!Rock-Start`.*\n*If you would like to switch, use the command `!Switch-L3-Detour`.*");
-  assert.match(cardText(out[2]), /to \[\*\*The Bank\*\*\]\(https:\/\/x\.dev\/bank\.png\), where they'll raft it\./);
+  assert.match(cardText(out[2]), /to \*\*The Bank\*\*, where they'll raft it\./);
+  assert.match(JSON.stringify(out[2].embed), /https:\/\/x\.dev\/bank\.png/);
+  assert.doesNotMatch(cardText(out[2]), /\]\(/);
   assert.doesNotMatch(cardText(out[1]), /DETOUR/);
   assert.equal(images(out[1])[0], `${ORIGIN}/img/detour.webp?v=2`);
   assert.match(out[3].text, /travel \*\*10 minutes\*\* to the other detour/);
