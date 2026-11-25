@@ -1,5 +1,4 @@
 import { bannerImage } from '../legStartCard.js';
-import { getInitials } from '../tagTemplates.js';
 import { hasLeg, legField, legStartValue, TEST_PREFIX, italic, card, gallery, text, separator, cardOutput, tagOutput } from './common.js';
 
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -11,8 +10,8 @@ const SIDE_KEYS = (n) => [`name${n}`, `time${n}`, `loc${n}`, `img${n}`, `desc${n
 const blankSide = (n) => Object.fromEntries(SIDE_KEYS(n).map((k) => [k, '']));
 const sideDone = (d, n) => Boolean(d[`name${n}`] && d[`time${n}`] && d[`loc${n}`] && d[`desc${n}`]);
 
-// The arrival tag: the name typed, or for detours saved before it was asked, the old area initials.
-const arrivalTag = (d) => d.tagName || (d.location ? `${getInitials(d.location).toLowerCase()}-arrived` : '');
+// The arrival (detour start) tag: the name typed.
+const arrivalTag = (d) => d.tagName;
 
 const sideSection = (n) => ({
   id: `side${n}`,
@@ -44,9 +43,11 @@ export const detour = {
     { label: 'Option 1', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 1) },
     { label: 'Option 2', detail: 'Name, travel time, location, image, what happens', done: sideDone(d, 2) },
   ],
-  initial: ({ leg, tag }) => ({ leg: legStartValue(leg), tagName: tag ?? '', location: '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
+  initial: ({ leg, tag }) => ({ leg: legStartValue(leg), tagName: tag ?? '', image: '', switchTime: '', ...blankSide(1), ...blankSide(2) }),
   // A short description of a saved clue, for the /edit_clue list.
-  describe: (d) => d.location || `${d.name1} or ${d.name2}`,
+  // Detours saved before the tag name was asked stay in the /edit_clue list.
+  savedTag: (d) => d.tagName || `l${d.leg}-detour`,
+  describe: (d) => `${d.name1} or ${d.name2}`,
   draftKey: (d) => (hasLeg(d) ? `detour:l${d.leg}` : null),
   ready: (d) => hasLeg(d) && Boolean(arrivalTag(d)) && sideDone(d, 1) && sideDone(d, 2),
   menus: () => [],
@@ -82,7 +83,7 @@ export const detour = {
           text(`*If you would like to switch, use the command \`!${switchShown}\`.*`),
         ]),
         title: `Detour: ${name}`,
-        description: d.location || d.name1,
+        description: d.name1,
       });
     return [
       cardOutput({
@@ -94,7 +95,7 @@ export const detour = {
           text(`### ${d.name1.toUpperCase()} OR ${d.name2.toUpperCase()}?`),
           text(
             italic(
-              `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit ${d.location ? `**${d.location}**` : 'the detour'} when you are ready.` +
+              `Use the commands \`!${show1}\` and \`!${show2}\` to view the details of both sides of the detour, and exit the detour when you are ready.` +
                 `\nIf your team chooses to switch sides of the detour at any point, use the command \`!${switchShown}\` to travel and begin the other side. ` +
                 'Please note that switching will erase all progress, and returning later will require you to start from the beginning.',
             ),
