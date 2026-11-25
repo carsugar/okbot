@@ -56,7 +56,7 @@ export const detour = {
       id: 'location',
       title: 'Tag, image and switch',
       inputs: [
-        ['tagName', 'Tag name for the detour start', 50, true, undefined, 'e.g. cdm-detour, san-jose-detour', 'The tag staff send to start the detour.'],
+        ['tagName', 'Tag name for the detour start', 50, true, undefined, 'e.g. cdm-detour, san-jose-detour'],
         ['image', 'Arrival image URL (optional)', 500, false, undefined, 'https://www.imageURL.com'],
         ['switchTime', 'Switch travel time (optional)', 50, false, undefined, 'e.g. 10 minutes'],
       ],
