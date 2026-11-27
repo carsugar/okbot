@@ -55,6 +55,7 @@ router.post('/', async (request, env, ctx) => {
     if (interaction.data.name === 'create_clue') return handleCreateClueCommand(interaction, env, new URL(request.url).origin);
     if (interaction.data.name === 'edit_clue') return handleEditClueCommand(interaction, env, new URL(request.url).origin);
     if (interaction.data.name === 'memorypoker') return handleMemoryPokerCommand(interaction, env, new URL(request.url).origin);
+    if (interaction.data.name === 'choose') return new JsonResponse({ type: 4, data: { content: 'Anyone but Carling' } });
     return handleCommand(interaction);
   }
 

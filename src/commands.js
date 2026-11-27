@@ -93,3 +93,10 @@ export const MEMORYPOKER_COMMAND = {
   contexts: [0], // guild channels only
   options: [{ type: 5, name: 'solo', description: 'Practise alone, privately', required: false }],
 };
+
+// Looks like it picks from the list it is given, but the answer never changes.
+export const CHOOSE_COMMAND = {
+  name: 'choose',
+  description: 'Picks one thing from a list you give it.',
+  options: [{ type: 3, name: 'options', description: 'The choices, separated by commas', required: true }],
+};
