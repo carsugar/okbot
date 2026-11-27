@@ -4,7 +4,7 @@ import { JsonResponse } from './utils.js';
 export const chooseReply = (raw = '') => {
   const choices = raw.split(',').map((c) => c.trim()).filter(Boolean);
   const list = choices.map((c) => `• ${c}`).join('\n');
-  return `${list ? `Choosing between:\n${list}\n\n` : ''}**Carling did not do the murder**`.slice(0, 2000);
+  return `${list ? `Choosing between:\n${list}\n\n` : ''}**I choose Dumb Fick**`.slice(0, 2000);
 };
 
 export const handleChoose = (interaction) =>
